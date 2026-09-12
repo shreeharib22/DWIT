@@ -1,7 +1,7 @@
 import './style.css'
 
 const app = document.querySelector('#app')
-const API_URL = 'http://192.168.1.9:8000'
+const API_URL = 'https://sihgpt.onrender.com'
 
 // =========================================================
 // OFFLINE / ONLINE STATUS
