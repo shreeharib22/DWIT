@@ -35,6 +35,7 @@ app.add_middleware(
     "http://192.168.13.157:5174",
     "http://192.168.13.157:5175",
     "http://192.168.13.157:5176",
+    "https://sihgpt-ten.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
