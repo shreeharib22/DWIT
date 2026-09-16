@@ -4,13 +4,16 @@ from pydantic import BaseModel
 from typing import Optional
 import sqlite3
 from datetime import datetime
+import os
+from google import genai
+from google.genai import types
 
 # =========================================================
 # APP
 # =========================================================
 
 app = FastAPI(
-    title="SIHGPT API",
+    title="DWIT API",
     description="Rural Health Continuity Platform",
     version="2.0.0"
 )
@@ -35,7 +38,7 @@ app.add_middleware(
     "http://192.168.13.157:5174",
     "http://192.168.13.157:5175",
     "http://192.168.13.157:5176",
-    "https://sihgpt-ten.vercel.app",
+  
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -137,6 +140,130 @@ FACILITIES = [
     },
 ]
 
+# =========================================================
+# FACILITY MAP + SERVICE METADATA
+# =========================================================
+
+FACILITY_MAP_DATA = {
+
+    "PHC-BENGALURU-RURAL": {
+        "latitude": 13.2470,
+        "longitude": 77.7130,
+        "address": "Bengaluru Rural",
+        "services": [
+            "Primary Care",
+            "Maternal Care",
+            "Child Health",
+            "Vaccination",
+            "Basic Diagnostics"
+        ]
+    },
+
+    "PHC-ANEKAL": {
+        "latitude": 12.7110,
+        "longitude": 77.6950,
+        "address": "Anekal, Bengaluru Rural",
+        "services": [
+            "Primary Care",
+            "Maternal Care",
+            "Child Health",
+            "Vaccination",
+            "Basic Diagnostics"
+        ]
+    },
+
+    "PHC-DEVANAHALLI": {
+        "latitude": 13.2470,
+        "longitude": 77.7130,
+        "address": "Devanahalli, Bengaluru Rural",
+        "services": [
+            "Primary Care",
+            "Maternal Care",
+            "Child Health",
+            "Vaccination",
+            "Basic Diagnostics"
+        ]
+    },
+
+    "CHC-BENGALURU-RURAL": {
+        "latitude": 13.2470,
+        "longitude": 77.7130,
+        "address": "Bengaluru Rural",
+        "services": [
+            "Primary Care",
+            "Emergency Care",
+            "Diagnostics",
+            "Pharmacy",
+            "Maternal Care"
+        ]
+    },
+
+    "CHC-ANEKAL": {
+        "latitude": 12.7110,
+        "longitude": 77.6950,
+        "address": "Anekal, Bengaluru Rural",
+        "services": [
+            "Primary Care",
+            "Emergency Care",
+            "Diagnostics",
+            "Pharmacy",
+            "Maternal Care"
+        ]
+    },
+
+    "CHC-DEVANAHALLI": {
+        "latitude": 13.2470,
+        "longitude": 77.7130,
+        "address": "Devanahalli, Bengaluru Rural",
+        "services": [
+            "Primary Care",
+            "Emergency Care",
+            "Diagnostics",
+            "Pharmacy",
+            "Maternal Care"
+        ]
+    },
+
+    "RURAL-HOSPITAL-BENGALURU-RURAL": {
+        "latitude": 13.2470,
+        "longitude": 77.7130,
+        "address": "Bengaluru Rural",
+        "services": [
+            "Inpatient Care",
+            "Emergency Care",
+            "Diagnostics",
+            "Pharmacy",
+            "Specialist Referral"
+        ]
+    },
+
+    "RURAL-HOSPITAL-ANEKAL": {
+        "latitude": 12.7110,
+        "longitude": 77.6950,
+        "address": "Anekal, Bengaluru Rural",
+        "services": [
+            "Inpatient Care",
+            "Emergency Care",
+            "Diagnostics",
+            "Pharmacy",
+            "Specialist Referral"
+        ]
+    },
+
+    "DISTRICT-HOSPITAL-BENGALURU-RURAL": {
+        "latitude": 13.2470,
+        "longitude": 77.7130,
+        "address": "Bengaluru Rural",
+        "services": [
+            "Emergency Care",
+            "Specialist Care",
+            "Diagnostics",
+            "Pharmacy",
+            "Inpatient Care",
+            "Surgery"
+        ]
+    }
+}
 
 # =========================================================
 # DATABASE INITIALIZATION
@@ -342,6 +469,178 @@ def initialize_database():
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    # -----------------------------------------------------
+    # MEDICINE INVENTORY
+    # -----------------------------------------------------
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS medicine_inventory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            facility_id TEXT NOT NULL,
+            medicine_name TEXT NOT NULL,
+            category TEXT DEFAULT 'General',
+            stock_quantity INTEGER NOT NULL DEFAULT 0,
+            unit TEXT DEFAULT 'units',
+            minimum_stock INTEGER NOT NULL DEFAULT 10,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_by TEXT,
+            UNIQUE (facility_id, medicine_name),
+            FOREIGN KEY (facility_id)
+                REFERENCES facilities(id)
+        )
+    """)
+
+        # -----------------------------------------------------
+    # DIAGNOSTIC AVAILABILITY
+    # -----------------------------------------------------
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS diagnostic_availability (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            facility_id TEXT NOT NULL,
+            test_name TEXT NOT NULL,
+            category TEXT DEFAULT 'General',
+            status TEXT NOT NULL DEFAULT 'Available',
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_by TEXT,
+            UNIQUE (facility_id, test_name),
+            FOREIGN KEY (facility_id)
+                REFERENCES facilities(id)
+        )
+    """)
+
+        # -----------------------------------------------------
+    # DEMO DIAGNOSTIC AVAILABILITY
+    # -----------------------------------------------------
+
+    demo_diagnostics = [
+        (
+            "PHC-BENGALURU-RURAL",
+            "Complete Blood Count",
+            "Blood Test",
+            "Available"
+        ),
+        (
+            "PHC-BENGALURU-RURAL",
+            "Blood Glucose",
+            "Blood Test",
+            "Available"
+        ),
+        (
+            "PHC-BENGALURU-RURAL",
+            "ECG",
+            "Cardiac",
+            "Available"
+        ),
+        (
+            "PHC-BENGALURU-RURAL",
+            "X-Ray",
+            "Imaging",
+            "Unavailable"
+        ),
+
+        (
+            "PHC-ANEKAL",
+            "Complete Blood Count",
+            "Blood Test",
+            "Available"
+        ),
+        (
+            "PHC-ANEKAL",
+            "Blood Glucose",
+            "Blood Test",
+            "Available"
+        ),
+        (
+            "PHC-ANEKAL",
+            "X-Ray",
+            "Imaging",
+            "Limited"
+        ),
+
+        (
+            "CHC-BENGALURU-RURAL",
+            "Complete Blood Count",
+            "Blood Test",
+            "Available"
+        ),
+        (
+            "CHC-BENGALURU-RURAL",
+            "Blood Glucose",
+            "Blood Test",
+            "Available"
+        ),
+        (
+            "CHC-BENGALURU-RURAL",
+            "ECG",
+            "Cardiac",
+            "Available"
+        ),
+        (
+            "CHC-BENGALURU-RURAL",
+            "X-Ray",
+            "Imaging",
+            "Available"
+        ),
+        (
+            "CHC-BENGALURU-RURAL",
+            "Ultrasound",
+            "Imaging",
+            "Unavailable"
+        ),
+    ]
+
+    for diagnostic in demo_diagnostics:
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO diagnostic_availability (
+                facility_id,
+                test_name,
+                category,
+                status
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            diagnostic
+        )
+        # -----------------------------------------------------
+    # DEMO MEDICINE STOCK
+    # -----------------------------------------------------
+
+    demo_medicines = [
+        ("PHC-BENGALURU-RURAL", "Paracetamol 500mg", "General", 124, "strips", 20),
+        ("PHC-BENGALURU-RURAL", "Amoxicillin 500mg", "Antibiotic", 18, "strips", 20),
+        ("PHC-BENGALURU-RURAL", "ORS Sachets", "Essential", 0, "sachets", 15),
+        ("PHC-BENGALURU-RURAL", "Metformin 500mg", "Diabetes", 67, "strips", 20),
+
+        ("PHC-ANEKAL", "Paracetamol 500mg", "General", 86, "strips", 20),
+        ("PHC-ANEKAL", "ORS Sachets", "Essential", 42, "sachets", 15),
+        ("PHC-ANEKAL", "Amoxicillin 500mg", "Antibiotic", 7, "strips", 20),
+
+        ("CHC-BENGALURU-RURAL", "Paracetamol 500mg", "General", 240, "strips", 30),
+        ("CHC-BENGALURU-RURAL", "Amoxicillin 500mg", "Antibiotic", 95, "strips", 20),
+        ("CHC-BENGALURU-RURAL", "ORS Sachets", "Essential", 180, "sachets", 30),
+        ("CHC-BENGALURU-RURAL", "Metformin 500mg", "Diabetes", 112, "strips", 20),
+        ("CHC-BENGALURU-RURAL", "Azithromycin 250mg", "Antibiotic", 9, "strips", 20),
+    ]
+
+    for medicine in demo_medicines:
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO medicine_inventory (
+                facility_id,
+                medicine_name,
+                category,
+                stock_quantity,
+                unit,
+                minimum_stock
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            medicine
+        )
+
 
     # =====================================================
     # MIGRATE EXISTING DATA
@@ -703,9 +1002,65 @@ def initialize_database():
             user
         )
 
+    # -----------------------------------------------------
+    # APPOINTMENT / DOCTOR AVAILABILITY EXTENSIONS
+    # -----------------------------------------------------
+
+    cursor.execute("DROP TABLE IF EXISTS doctor_availability")
+
+    cursor.execute("""
+        CREATE TABLE doctor_availability (
+            doctor_user_id TEXT PRIMARY KEY,
+            status TEXT NOT NULL DEFAULT 'Available',
+            specialty TEXT NOT NULL DEFAULT 'General Medicine',
+            working_days TEXT NOT NULL DEFAULT 'Mon,Tue,Wed,Thu,Fri',
+            start_time TEXT NOT NULL DEFAULT '09:00',
+            end_time TEXT NOT NULL DEFAULT '17:00',
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (doctor_user_id) REFERENCES users(user_id)
+        )
+    """)
+
+    add_column_if_missing(db, "appointments", "doctor_user_id", "TEXT")
+    add_column_if_missing(db, "appointments", "reason", "TEXT DEFAULT ''")
+    add_column_if_missing(db, "appointments", "booked_by", "TEXT")
+    add_column_if_missing(db, "appointments", "source_role", "TEXT")
+    add_column_if_missing(db, "appointments", "created_at", "TEXT")
+    add_column_if_missing(db, "appointments", "updated_at", "TEXT")
+
+    cursor.execute("""
+        UPDATE appointments
+        SET created_at = COALESCE(created_at, CURRENT_TIMESTAMP),
+            updated_at = COALESCE(updated_at, CURRENT_TIMESTAMP)
+        WHERE created_at IS NULL OR updated_at IS NULL
+    """)
+
+    cursor.execute("""
+        UPDATE appointments
+        SET doctor_user_id = 'DOCTOR001'
+        WHERE doctor_user_id IS NULL OR TRIM(doctor_user_id) = ''
+    """)
+
+    cursor.execute("""
+        INSERT OR IGNORE INTO doctor_availability
+            (doctor_user_id, status, specialty, working_days, start_time, end_time)
+        SELECT
+            u.user_id,
+            'Available',
+            CASE
+                WHEN LOWER(u.name) LIKE '%surge%' THEN 'General Surgery'
+                WHEN LOWER(u.name) LIKE '%child%' THEN 'Paediatrics'
+                ELSE 'General Medicine'
+            END,
+            'Mon,Tue,Wed,Thu,Fri',
+            '09:00',
+            '17:00'
+        FROM users u
+        WHERE u.role = 'doctor' AND u.active = 1
+    """)
+
     db.commit()
     db.close()
-
 
 # Initialize database when application starts.
 initialize_database()
@@ -752,6 +1107,19 @@ class VisitCreate(BaseModel):
     notes: str = ""
     triage_status: str = "Normal"
 
+class AIAssessmentRequest(BaseModel):
+    patient_id: str
+    symptoms: str = ""
+    temperature: str = ""
+    blood_pressure: str = ""
+    pulse: str = ""
+    spo2: str = ""
+    notes: str = ""
+class PatientVoiceExplanationRequest(BaseModel):
+    patient_id: str
+    symptoms: str
+    language: str = "en"
+
 
 class ReferralCreate(BaseModel):
     patient_id: str
@@ -776,6 +1144,29 @@ class DoctorPrescriptionCreate(BaseModel):
     dosage: str
     frequency: str
     duration: str
+
+
+class AppointmentCreate(BaseModel):
+    patient_id: str
+    doctor_user_id: str
+    appointment_date: str
+    appointment_time: str
+    reason: str = ""
+
+
+class AppointmentUpdate(BaseModel):
+    appointment_date: Optional[str] = None
+    appointment_time: Optional[str] = None
+    status: Optional[str] = None
+    reason: Optional[str] = None
+
+
+class DoctorAvailabilityUpdate(BaseModel):
+    status: str = "Available"
+    specialty: str = "General Medicine"
+    working_days: str = "Mon,Tue,Wed,Thu,Fri"
+    start_time: str = "09:00"
+    end_time: str = "17:00"
 
 
 
@@ -930,17 +1321,754 @@ def staff_can_access_patient(
 
     return False, "Patient belongs to another facility"
 
+# =========================================================
+# AI-ASSISTED SMART TRIAGE
+# =========================================================
 
+def build_ai_assessment(
+    symptoms: str = "",
+    temperature: str = "",
+    blood_pressure: str = "",
+    pulse: str = "",
+    spo2: str = "",
+    notes: str = ""
+):
+    text = " ".join([
+        symptoms or "",
+        notes or ""
+    ]).strip().lower()
+
+    reasons = []
+    priority = "Routine"
+
+    # Oxygen saturation
+    try:
+        spo2_value = float(spo2)
+        if spo2_value < 90:
+            priority = "Urgent"
+            reasons.append(
+                "Oxygen saturation is below the configured urgent threshold."
+            )
+        elif spo2_value < 94:
+            if priority != "Urgent":
+                priority = "Review"
+            reasons.append(
+                "Oxygen saturation is below the configured review threshold."
+            )
+    except (TypeError, ValueError):
+        pass
+
+    # Temperature
+    try:
+        temp_value = float(
+            str(temperature)
+            .replace("°", "")
+            .replace("C", "")
+            .replace("c", "")
+        )
+
+        if temp_value >= 39.0:
+            if priority != "Urgent":
+                priority = "Review"
+            reasons.append(
+                "Temperature is elevated and needs clinical review."
+            )
+    except (TypeError, ValueError):
+        pass
+
+    # Pulse
+    try:
+        pulse_value = float(pulse)
+
+        if pulse_value >= 120 or pulse_value <= 45:
+            priority = "Urgent"
+            reasons.append(
+                "Pulse is outside the configured urgent range."
+            )
+        elif pulse_value >= 100:
+            if priority != "Urgent":
+                priority = "Review"
+            reasons.append(
+                "Pulse is elevated and should be reviewed."
+            )
+    except (TypeError, ValueError):
+        pass
+
+    # Blood pressure
+    try:
+        bp_parts = str(blood_pressure).replace(" ", "").split("/")
+
+        if len(bp_parts) == 2:
+            systolic = float(bp_parts[0])
+            diastolic = float(bp_parts[1])
+
+            if systolic >= 180 or diastolic >= 120:
+                priority = "Urgent"
+                reasons.append(
+                    "Blood pressure is in the configured urgent range."
+                )
+            elif systolic >= 140 or diastolic >= 90:
+                if priority != "Urgent":
+                    priority = "Review"
+                reasons.append(
+                    "Blood pressure is elevated and needs review."
+                )
+    except (TypeError, ValueError):
+        pass
+
+    # Symptom-based escalation flags.
+    urgent_terms = [
+        "severe chest pain",
+        "difficulty breathing",
+        "shortness of breath",
+        "unconscious",
+        "fainted",
+        "seizure",
+        "heavy bleeding",
+        "severe bleeding",
+        "stroke",
+        "cannot breathe"
+    ]
+
+    review_terms = [
+        "persistent fever",
+        "vomiting",
+        "diarrhea",
+        "dizziness",
+        "weakness",
+        "swelling",
+        "persistent cough",
+        "infection"
+    ]
+
+    matched_urgent = [
+        term for term in urgent_terms
+        if term in text
+    ]
+
+    matched_review = [
+        term for term in review_terms
+        if term in text
+    ]
+
+    if matched_urgent:
+        priority = "Urgent"
+
+        reasons.append(
+            "The recorded symptoms contain an urgent escalation indicator."
+        )
+
+    elif matched_review and priority != "Urgent":
+        priority = "Review"
+
+        reasons.append(
+            "The recorded symptoms contain an indicator for clinical review."
+        )
+
+    # Default explanation.
+    if not reasons:
+        reasons.append(
+            "No configured urgent or review indicators were detected "
+            "from the available information."
+        )
+
+    if priority == "Urgent":
+        next_action = (
+            "Escalate for prompt clinical assessment and human review."
+        )
+        care_level = "Urgent clinical care"
+        human_review = True
+
+    elif priority == "Review":
+        next_action = (
+            "Arrange clinical review and verify the recorded observations."
+        )
+        care_level = "Primary care / clinician review"
+        human_review = True
+
+    else:
+        next_action = (
+            "Continue routine care, monitor symptoms, and follow the "
+            "existing care plan."
+        )
+        care_level = "Routine community care"
+        human_review = False
+
+    return {
+        "priority": priority,
+        "explanation": reasons,
+        "next_action": next_action,
+        "care_level": care_level,
+        "human_review_required": human_review,
+        "decision_support": True,
+        "disclaimer": (
+            "Decision-support only. This assessment does not provide "
+            "an autonomous diagnosis or treatment recommendation."
+        )
+    }
+
+@app.post("/ai/assessment")
+async def ai_assessment(
+    data: AIAssessmentRequest
+):
+    db = get_db()
+
+    patient = get_patient(
+        db,
+        data.patient_id
+    )
+
+    if not patient:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found"
+        )
+
+    api_key = os.getenv("GEMINI_API_KEY")
+
+    # Safe fallback when Gemini is unavailable
+    if not api_key:
+        result = build_ai_assessment(
+            symptoms=data.symptoms,
+            temperature=data.temperature,
+            blood_pressure=data.blood_pressure,
+            pulse=data.pulse,
+            spo2=data.spo2,
+            notes=data.notes
+        )
+
+        db.close()
+
+        return {
+            "success": True,
+            "patient_id": data.patient_id,
+            "patient_name": patient["name"],
+            "ai_provider": "rules_fallback",
+            "assessment": result
+        }
+
+    try:
+        client = genai.Client(
+            api_key=api_key
+        )
+
+        prompt = f"""
+You are an AI clinical decision-support assistant
+inside DWIT, a rural health continuity platform.
+
+You assist trained health workers by organizing and
+assessing the information they recorded during a field visit.
+
+You MUST NOT:
+- diagnose the patient
+- prescribe medication
+- claim certainty
+- invent missing information
+- make autonomous treatment decisions
+
+Use ONLY the information provided below.
+CRITICAL FACTUAL RULES:
+- Treat every supplied vital sign as an exact recorded fact.
+- Never change, round, estimate, or replace a recorded value.
+- Never invent a measurement that is not provided.
+- Do not repeat vital numbers in the explanation.
+- Refer to measurements using neutral phrases such as "temperature is elevated"
+  or "pulse is elevated" when explaining the result.
+- Base the assessment only on the supplied patient information.
+
+PATIENT
+Name: {patient["name"]}
+Age: {patient["age"]}
+Gender: {patient["gender"]}
+
+FIELD VISIT
+Symptoms: {data.symptoms}
+Temperature: {data.temperature}
+Blood pressure: {data.blood_pressure}
+Pulse: {data.pulse}
+SpO2: {data.spo2}
+ASHA notes: {data.notes}
+
+Return ONLY valid JSON with these fields:
+
+{{
+  "priority": "Routine | Review | Urgent",
+  "explanation": [
+    "1 to 4 concise reasons based only on the provided information"
+  ],
+  "next_action": "A concise next step for the human health worker",
+  "care_level": "Routine community care | Primary care / clinician review | Urgent clinical care",
+  "human_review_required": true,
+  "decision_support": true,
+  "disclaimer": "Decision-support only. This assessment does not provide an autonomous diagnosis or treatment recommendation."
+}}
+
+Rules:
+- Routine = no clear configured concern requiring escalation.
+- Review = information should be reviewed by a clinician.
+- Urgent = concerning information needs prompt human assessment.
+- Do not provide a diagnosis.
+- Do not prescribe medicines.
+- Do not invent values that were not supplied.
+"""
+
+        response = client.models.generate_content(
+            model="gemini-3.5-flash-lite",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+        )
+
+        import json
+
+        assessment = json.loads(
+            response.text
+        )
+
+        db.close()
+
+        return {
+            "success": True,
+            "patient_id": data.patient_id,
+            "patient_name": patient["name"],
+            "ai_provider": "Google Gemini",
+            "model": "gemini-3.5-flash-lite",
+            "assessment": assessment
+        }
+
+    except Exception as error:
+        print(
+            "Gemini AI assessment failed:",
+            error
+        )
+
+        print(
+    "GEMINI ERROR TYPE:",
+    type(error).__name__
+)
+
+        print(
+    "GEMINI ERROR DETAILS:",
+    str(error)
+)
+
+        # Safe fallback if Gemini fails
+        result = build_ai_assessment(
+            symptoms=data.symptoms,
+            temperature=data.temperature,
+            blood_pressure=data.blood_pressure,
+            pulse=data.pulse,
+            spo2=data.spo2,
+            notes=data.notes
+        )
+
+        db.close()
+
+        return {
+            "success": True,
+            "patient_id": data.patient_id,
+            "patient_name": patient["name"],
+            "ai_provider": "rules_fallback",
+            "assessment": result
+        }
+
+# =========================================================
+# PATIENT VOICE SYMPTOM EXPLANATION
+# =========================================================
+
+@app.post("/ai/patient-explanation")
+async def patient_voice_explanation(
+    data: PatientVoiceExplanationRequest
+):
+    db = get_db()
+
+    patient = get_patient(
+        db,
+        data.patient_id
+    )
+
+    if not patient:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found"
+        )
+
+    symptoms = data.symptoms.strip()
+
+    if not symptoms:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail="No symptoms were provided."
+        )
+
+    # Get the latest recorded visit for additional context.
+    latest_visit = db.execute(
+        """
+        SELECT
+            symptoms,
+            temperature,
+            blood_pressure,
+            pulse,
+            spo2,
+            notes,
+            triage_status,
+            visit_date
+        FROM visits
+        WHERE patient_id = ?
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        (data.patient_id,)
+    ).fetchone()
+
+    api_key = os.getenv("GEMINI_API_KEY")
+
+    if not api_key:
+        db.close()
+
+        return {
+            "success": True,
+            "ai_provider": "basic_fallback",
+            "language": data.language,
+            "patient_id": data.patient_id,
+            "summary": symptoms,
+            "explanation": (
+                "Your symptoms have been recorded. "
+                "Please discuss them with your healthcare worker "
+                "for proper medical assessment."
+            ),
+            "next_steps": (
+                "Follow the advice given by your healthcare worker."
+            ),
+            "warning": (
+                "If your condition becomes severe or you feel unsafe, "
+                "seek urgent medical care."
+            )
+        }
+
+    try:
+        client = genai.Client(
+            api_key=api_key
+        )
+
+        language_names = {
+            "en": "English",
+            "hi": "Hindi",
+            "kn": "Kannada",
+            "mr": "Marathi",
+            "ta": "Tamil",
+            "te": "Telugu",
+            "ml": "Malayalam",
+            "bn": "Bengali",
+            "gu": "Gujarati",
+            "pa": "Punjabi",
+            "as": "Assamese"
+        }
+
+        language_name = language_names.get(
+            data.language,
+            "English"
+        )
+
+        visit_context = ""
+
+        if latest_visit:
+            visit_context = f"""
+LATEST RECORDED VISIT
+
+Symptoms:
+{latest_visit["symptoms"] or "Not recorded"}
+
+Temperature:
+{latest_visit["temperature"] or "Not recorded"}
+
+Blood pressure:
+{latest_visit["blood_pressure"] or "Not recorded"}
+
+Pulse:
+{latest_visit["pulse"] or "Not recorded"}
+
+SpO2:
+{latest_visit["spo2"] or "Not recorded"}
+
+Health worker notes:
+{latest_visit["notes"] or "Not recorded"}
+
+Triage status:
+{latest_visit["triage_status"] or "Not recorded"}
+"""
+
+        prompt = f"""
+You are the patient communication assistant inside DWIT
+(Do not worry, I'm there), a rural healthcare continuity platform.
+
+Your job is to explain the patient's recorded health information
+in simple, reassuring language.
+
+The patient has selected:
+{language_name}
+
+IMPORTANT:
+
+- Do NOT diagnose the patient.
+- Do NOT claim certainty.
+- Do NOT prescribe medicines.
+- Do NOT invent symptoms, test results or measurements.
+- Do NOT tell the patient that they definitely have a disease.
+- Clearly distinguish symptoms from a medical diagnosis.
+- Use very simple language suitable for a patient with limited
+  medical knowledge.
+- Explain what the reported symptoms may indicate only in general terms.
+- Encourage consultation with a healthcare professional.
+- If warning signs are present, tell the patient to seek prompt
+  medical attention.
+- Return the response entirely in {language_name}.
+
+PATIENT
+
+Name:
+{patient["name"]}
+
+Age:
+{patient["age"]}
+
+Gender:
+{patient["gender"]}
+
+PATIENT'S SPOKEN SYMPTOMS
+
+{symptoms}
+
+{visit_context}
+
+Return ONLY valid JSON with exactly these fields:
+
+{{
+    "summary": "A short summary of what the patient reported.",
+    "explanation": "A simple patient-friendly explanation.",
+    "next_steps": "What the patient should do next.",
+    "warning": "Important warning signs or when to seek medical help."
+}}
+
+Do not include markdown.
+"""
+
+        response = client.models.generate_content(
+            model="gemini-3.5-flash-lite",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+        )
+
+        import json
+
+        result = json.loads(
+            response.text
+        )
+
+        db.close()
+
+        return {
+            "success": True,
+            "ai_provider": "Google Gemini",
+            "model": "gemini-3.5-flash-lite",
+            "patient_id": data.patient_id,
+            "language": data.language,
+            "language_name": language_name,
+            "summary": result.get(
+                "summary",
+                ""
+            ),
+            "explanation": result.get(
+                "explanation",
+                ""
+            ),
+            "next_steps": result.get(
+                "next_steps",
+                ""
+            ),
+            "warning": result.get(
+                "warning",
+                ""
+            )
+        }
+
+    except Exception as error:
+
+        print(
+            "Patient explanation AI failed:",
+            error
+        )
+
+        db.close()
+
+        return {
+            "success": True,
+            "ai_provider": "fallback",
+            "patient_id": data.patient_id,
+            "language": data.language,
+            "summary": symptoms,
+            "explanation": (
+                "Your symptoms have been recorded. "
+                "Please discuss them with your healthcare worker."
+            ),
+            "next_steps": (
+                "Follow the instructions provided by your healthcare worker."
+            ),
+            "warning": (
+                "If you feel seriously unwell, seek medical attention promptly."
+            )
+        }
 # =========================================================
 # BASIC ROUTES
 # =========================================================
+# =========================================================
+# MEDICINE INVENTORY API
+# =========================================================
+
+@app.get("/inventory")
+async def get_inventory(
+    facility_id: Optional[str] = None
+):
+    db = get_db()
+
+    if facility_id:
+        rows = db.execute(
+            """
+            SELECT
+                mi.id,
+                mi.facility_id,
+                f.name AS facility_name,
+                mi.medicine_name,
+                mi.category,
+                mi.stock_quantity,
+                mi.unit,
+                mi.minimum_stock,
+                mi.updated_at,
+                mi.updated_by
+            FROM medicine_inventory mi
+            LEFT JOIN facilities f
+                ON f.id = mi.facility_id
+            WHERE mi.facility_id = ?
+            ORDER BY mi.medicine_name
+            """,
+            (facility_id,)
+        ).fetchall()
+    else:
+        rows = db.execute(
+            """
+            SELECT
+                mi.id,
+                mi.facility_id,
+                f.name AS facility_name,
+                mi.medicine_name,
+                mi.category,
+                mi.stock_quantity,
+                mi.unit,
+                mi.minimum_stock,
+                mi.updated_at,
+                mi.updated_by
+            FROM medicine_inventory mi
+            LEFT JOIN facilities f
+                ON f.id = mi.facility_id
+            ORDER BY f.name, mi.medicine_name
+            """
+        ).fetchall()
+
+    db.close()
+
+    inventory = []
+
+    for row in rows:
+        item = dict(row)
+
+        if item["stock_quantity"] <= 0:
+            item["status"] = "Out of Stock"
+        elif item["stock_quantity"] < item["minimum_stock"]:
+            item["status"] = "Low Stock"
+        else:
+            item["status"] = "Available"
+
+        inventory.append(item)
+
+    return {
+        "success": True,
+        "inventory": inventory
+    }
+
+# =========================================================
+# DIAGNOSTIC AVAILABILITY API
+# =========================================================
+
+@app.get("/diagnostics")
+async def get_diagnostics(
+    facility_id: Optional[str] = None
+):
+    db = get_db()
+
+    if facility_id:
+        rows = db.execute(
+            """
+            SELECT
+                da.id,
+                da.facility_id,
+                f.name AS facility_name,
+                da.test_name,
+                da.category,
+                da.status,
+                da.updated_at,
+                da.updated_by
+            FROM diagnostic_availability da
+            LEFT JOIN facilities f
+                ON f.id = da.facility_id
+            WHERE da.facility_id = ?
+            ORDER BY da.test_name
+            """,
+            (facility_id,)
+        ).fetchall()
+    else:
+        rows = db.execute(
+            """
+            SELECT
+                da.id,
+                da.facility_id,
+                f.name AS facility_name,
+                da.test_name,
+                da.category,
+                da.status,
+                da.updated_at,
+                da.updated_by
+            FROM diagnostic_availability da
+            LEFT JOIN facilities f
+                ON f.id = da.facility_id
+            ORDER BY f.name, da.test_name
+            """
+        ).fetchall()
+
+    db.close()
+
+    return {
+        "success": True,
+        "diagnostics": [
+            dict(row)
+            for row in rows
+        ]
+    }
+
+
+
 
 @app.get("/")
 async def root():
 
     return {
         "status": "ok",
-        "service": "SIHGPT API",
+        "service": "DWIT API",
         "version": "2.0.0",
         "message": "Backend is running",
     }
@@ -979,12 +2107,18 @@ async def list_facilities():
     db.close()
 
     return {
-        "success": True,
-        "facilities": [
-            dict(row)
-            for row in rows
-        ],
-    }
+    "success": True,
+    "facilities": [
+        {
+            **dict(row),
+            **FACILITY_MAP_DATA.get(
+                row["id"],
+                {}
+            )
+        }
+        for row in rows
+    ],
+}
 
 
 @app.get("/facilities/{facility_id}")
@@ -1012,6 +2146,8 @@ async def get_facility_details(
         "success": True,
         "facility": dict(facility),
     }
+
+
 
 
 # =========================================================
@@ -1479,7 +2615,370 @@ async def get_patient_profile(
         "patient": dict(patient),
     }
 
+# =========================================================
+# CAREPASS - CONTINUITY-AWARE PATIENT PASSPORT
+# =========================================================
 
+@app.get("/patients/{patient_id}/carepass")
+async def get_patient_carepass(patient_id: str):
+    db = get_db()
+
+    patient = get_patient(db, patient_id)
+
+    if not patient:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found"
+        )
+    patient_data = dict(patient)
+
+    # -----------------------------------------------------
+    # VISITS
+    # -----------------------------------------------------
+    visits = db.execute(
+        """
+        SELECT
+            v.*,
+            u.name AS recorder_name
+        FROM visits v
+        LEFT JOIN users u
+            ON u.user_id = v.recorded_by
+        WHERE v.patient_id = ?
+        ORDER BY v.visit_date DESC, v.id DESC
+        """,
+        (patient_id,)
+    ).fetchall()
+
+    visits = [dict(row) for row in visits]
+
+    # -----------------------------------------------------
+    # REFERRALS
+    # -----------------------------------------------------
+    referrals = db.execute(
+        """
+        SELECT *
+        FROM referrals
+        WHERE patient_id = ?
+        ORDER BY rowid DESC
+        """,
+        (patient_id,)
+    ).fetchall()
+
+    referrals = [dict(row) for row in referrals]
+
+    # -----------------------------------------------------
+    # APPOINTMENTS
+    # -----------------------------------------------------
+    appointments = db.execute(
+        """
+        SELECT *
+        FROM appointments
+        WHERE patient_id = ?
+        ORDER BY appointment_date DESC, appointment_time DESC
+        """,
+        (patient_id,)
+    ).fetchall()
+
+    appointments = [dict(row) for row in appointments]
+
+    db.close()
+
+    # -----------------------------------------------------
+    # CURRENT STATUS
+    # -----------------------------------------------------
+    health_status = patient_data.get(
+        "health_status",
+        "Stable"
+    )
+
+    last_visit = visits[0] if visits else None
+
+    # -----------------------------------------------------
+    # OPEN REFERRALS
+    # -----------------------------------------------------
+    closed_referral_statuses = {
+        "Completed",
+        "Closed",
+        "Cancelled"
+    }
+
+    open_referrals = [
+        referral
+        for referral in referrals
+        if str(
+            referral.get("status", "")
+        ) not in closed_referral_statuses
+    ]
+
+    # -----------------------------------------------------
+    # UPCOMING / ACTIVE APPOINTMENTS
+    # -----------------------------------------------------
+    active_appointment_statuses = {
+        "Requested",
+        "Confirmed"
+    }
+
+    active_appointments = [
+        appointment
+        for appointment in appointments
+        if str(
+            appointment.get("status", "")
+        ) in active_appointment_statuses
+    ]
+
+    # -----------------------------------------------------
+    # CARE JOURNEY
+    # -----------------------------------------------------
+    journey = []
+
+    for visit in reversed(visits):
+        journey.append(
+            {
+                "type": "visit",
+                "title": "Field Visit",
+                "date": visit.get("visit_date"),
+                "status": visit.get(
+                    "triage_status",
+                    "Normal"
+                ),
+                "facility_id": visit.get(
+                    "facility_id"
+                ),
+                "recorded_by": visit.get(
+                    "recorder_name"
+                ),
+                "notes": visit.get("notes", "")
+            }
+        )
+
+    for referral in referrals:
+        journey.append(
+            {
+                "type": "referral",
+                "title": "Referral",
+                "date": referral.get(
+                    "created_at"
+                ),
+                "status": referral.get(
+                    "status",
+                    "Pending"
+                ),
+                "from_facility": referral.get(
+                    "from_facility_id"
+                ),
+                "to_facility": referral.get(
+                    "to_facility_id"
+                ),
+                "reason": referral.get(
+                    "reason",
+                    ""
+                ),
+                "priority": referral.get(
+                    "priority",
+                    "Normal"
+                )
+            }
+        )
+
+    for appointment in appointments:
+        journey.append(
+            {
+                "type": "appointment",
+                "title": "Appointment",
+                "date": appointment.get(
+                    "appointment_date"
+                ),
+                "time": appointment.get(
+                    "appointment_time"
+                ),
+                "status": appointment.get(
+                    "status",
+                    "Requested"
+                ),
+                "doctor": appointment.get(
+                    "doctor"
+                ),
+                "facility": appointment.get(
+                    "facility"
+                ),
+                "reason": appointment.get(
+                    "reason",
+                    ""
+                )
+            }
+        )
+
+    # -----------------------------------------------------
+    # OPEN ITEMS
+    # -----------------------------------------------------
+    open_items = []
+
+    for referral in open_referrals:
+        open_items.append(
+            {
+                "type": "referral",
+                "title": "Referral needs follow-up",
+                "detail": referral.get(
+                    "reason",
+                    "Referral is still open"
+                ),
+                "priority": referral.get(
+                    "priority",
+                    "Normal"
+                )
+            }
+        )
+
+    for appointment in active_appointments:
+        open_items.append(
+            {
+                "type": "appointment",
+                "title": "Upcoming appointment",
+                "detail": (
+                    f"{appointment.get('appointment_date', '')} "
+                    f"{appointment.get('appointment_time', '')}"
+                ),
+                "priority": "Normal"
+            }
+        )
+
+    if health_status in {
+        "Needs Review",
+        "Urgent"
+    }:
+        open_items.append(
+            {
+                "type": "health_status",
+                "title": "Health status requires attention",
+                "detail": health_status,
+                "priority": (
+                    "High"
+                    if health_status == "Urgent"
+                    else "Medium"
+                )
+            }
+        )
+
+    # -----------------------------------------------------
+    # NEXT ACTION
+    # -----------------------------------------------------
+    if health_status == "Urgent":
+        next_action = {
+            "title": "Urgent clinical review",
+            "detail": (
+                "Patient should be reviewed by "
+                "the appropriate healthcare professional."
+            ),
+            "priority": "Urgent"
+        }
+
+    elif open_referrals:
+        next_action = {
+            "title": "Complete referral journey",
+            "detail": (
+                "Follow the active referral and "
+                "confirm receiving-facility care."
+            ),
+            "priority": "High"
+        }
+
+    elif active_appointments:
+        next_action = {
+            "title": "Attend next appointment",
+            "detail": (
+                f"{active_appointments[0].get('appointment_date', '')} "
+                f"{active_appointments[0].get('appointment_time', '')}"
+            ),
+            "priority": "Normal"
+        }
+
+    elif visits:
+        next_action = {
+            "title": "Continue routine follow-up",
+            "detail": (
+                "Review the patient's latest visit "
+                "and maintain continuity of care."
+            ),
+            "priority": "Normal"
+        }
+
+    else:
+        next_action = {
+            "title": "Begin patient care journey",
+            "detail": (
+                "No previous care activity is available."
+            ),
+            "priority": "Normal"
+        }
+
+    # -----------------------------------------------------
+    # HANDOVER BRIEF
+    # -----------------------------------------------------
+    handover_parts = []
+
+    handover_parts.append(
+        f"Patient {patient_data.get('name', patient_id)} "
+        f"is currently marked as {health_status}."
+    )
+
+    if last_visit:
+        handover_parts.append(
+            "The latest recorded field visit "
+            f"was on {last_visit.get('visit_date', 'unknown date')}."
+        )
+
+        if last_visit.get("triage_status"):
+            handover_parts.append(
+                "Latest triage status: "
+                f"{last_visit.get('triage_status')}."
+            )
+
+    if open_referrals:
+        handover_parts.append(
+            f"There are {len(open_referrals)} "
+            "open referral(s) requiring follow-up."
+        )
+
+    if active_appointments:
+        handover_parts.append(
+            f"There are {len(active_appointments)} "
+            "active appointment(s)."
+        )
+
+    handover_parts.append(
+        "Next care action: "
+        f"{next_action['title']}."
+    )
+
+    handover_brief = " ".join(handover_parts)
+
+    # -----------------------------------------------------
+    # RESPONSE
+    # -----------------------------------------------------
+    return {
+        "success": True,
+        "carepass": {
+            "patient": dict(patient),
+
+            "current_status": {
+                "health_status": health_status,
+                "last_visit": last_visit
+            },
+
+            "care_journey": journey,
+
+            "open_items": open_items,
+
+            "open_referrals": open_referrals,
+
+            "active_appointments": active_appointments,
+
+            "next_action": next_action,
+
+            "handover_brief": handover_brief
+        }
+    }
 # =========================================================
 # STAFF PATIENT LIST
 # =========================================================
@@ -1691,6 +3190,474 @@ async def get_appointments(
             for appointment in appointments
         ],
     }
+
+
+# =========================================================
+# APPOINTMENT MANAGEMENT + DOCTOR AVAILABILITY
+# =========================================================
+
+@app.get("/doctors")
+async def list_doctors(facility_id: Optional[str] = None):
+    db = get_db()
+    params = []
+    query = """
+        SELECT
+            u.user_id,
+            u.name,
+            u.facility_id,
+            f.name AS facility_name,
+            COALESCE(da.status, 'Available') AS availability_status,
+            COALESCE(da.specialty, 'General Medicine') AS specialty,
+            COALESCE(da.working_days, 'Mon,Tue,Wed,Thu,Fri') AS working_days,
+            COALESCE(da.start_time, '09:00') AS start_time,
+            COALESCE(da.end_time, '17:00') AS end_time
+        FROM users u
+        LEFT JOIN facilities f ON f.id = u.facility_id
+        LEFT JOIN doctor_availability da ON da.doctor_user_id = u.user_id
+        WHERE u.role = 'doctor' AND u.active = 1
+    """
+    if facility_id:
+        query += " AND u.facility_id = ?"
+        params.append(facility_id)
+    query += " ORDER BY u.name"
+    rows = db.execute(query, params).fetchall()
+    db.close()
+    return {"success": True, "doctors": [dict(row) for row in rows]}
+
+
+@app.get("/doctors/{doctor_user_id}/availability")
+async def get_doctor_availability(doctor_user_id: str):
+    db = get_db()
+    doctor = get_user(db, doctor_user_id)
+    if not doctor or doctor["role"] != "doctor":
+        db.close()
+        raise HTTPException(status_code=404, detail="Doctor not found")
+    row = db.execute("SELECT * FROM doctor_availability WHERE doctor_user_id = ?", (doctor_user_id,)).fetchone()
+    if not row:
+        db.execute("""
+            INSERT INTO doctor_availability (doctor_user_id)
+            VALUES (?)
+        """, (doctor_user_id,))
+        db.commit()
+        row = db.execute("SELECT * FROM doctor_availability WHERE doctor_user_id = ?", (doctor_user_id,)).fetchone()
+    db.close()
+    return {"success": True, "availability": dict(row)}
+
+
+@app.put("/doctors/{doctor_user_id}/availability")
+async def update_doctor_availability(doctor_user_id: str, data: DoctorAvailabilityUpdate):
+    db = get_db()
+    doctor = get_user(db, doctor_user_id)
+    if not doctor or doctor["role"] != "doctor":
+        db.close()
+        raise HTTPException(status_code=404, detail="Doctor not found")
+
+    allowed = {"Available", "Busy", "Unavailable", "On Leave", "Emergency Only"}
+    if data.status not in allowed:
+        db.close()
+        raise HTTPException(status_code=400, detail="Invalid availability status")
+
+    now = datetime.now().isoformat(timespec="seconds")
+    db.execute("""
+        INSERT INTO doctor_availability
+            (doctor_user_id, status, specialty, working_days, start_time, end_time, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(doctor_user_id) DO UPDATE SET
+            status = excluded.status,
+            specialty = excluded.specialty,
+            working_days = excluded.working_days,
+            start_time = excluded.start_time,
+            end_time = excluded.end_time,
+            updated_at = excluded.updated_at
+    """, (
+        doctor_user_id,
+        data.status,
+        data.specialty.strip() or "General Medicine",
+        data.working_days.strip() or "Mon,Tue,Wed,Thu,Fri",
+        data.start_time,
+        data.end_time,
+        now,
+    ))
+    db.commit()
+    row = db.execute("SELECT * FROM doctor_availability WHERE doctor_user_id = ?", (doctor_user_id,)).fetchone()
+    db.close()
+    return {"success": True, "availability": dict(row)}
+
+
+@app.get("/staff/{user_id}/appointments")
+async def staff_appointments(user_id: str, status: Optional[str] = None):
+    db = get_db()
+    user = get_user(db, user_id)
+    if not user or user["role"] not in {"asha", "doctor"}:
+        db.close()
+        raise HTTPException(status_code=403, detail="Staff access required")
+
+    query = """
+        SELECT
+            a.*,
+            p.name AS patient_name,
+            p.village AS patient_village,
+            u.name AS doctor_name,
+            f.name AS facility_name
+        FROM appointments a
+        JOIN patients p ON p.patient_id = a.patient_id
+        LEFT JOIN users u ON u.user_id = a.doctor_user_id
+        LEFT JOIN facilities f ON f.id = a.facility_id
+        WHERE 1=1
+    """
+    params = []
+    if user["role"] == "doctor":
+        query += " AND (a.doctor_user_id = ? OR a.doctor = ?)"
+        params.extend([user_id, user["name"]])
+    else:
+        query += " AND p.facility_id = ?"
+        params.append(user["facility_id"])
+    if status:
+        query += " AND a.status = ?"
+        params.append(status)
+    query += " ORDER BY a.appointment_date ASC, a.appointment_time ASC, a.id DESC"
+    rows = db.execute(query, params).fetchall()
+    db.close()
+    return {"success": True, "appointments": [dict(row) for row in rows]}
+
+
+@app.post("/appointments")
+async def create_appointment(
+    data: AppointmentCreate,
+    booked_by: str,
+    source_role: str = "patient"
+):
+    db = get_db()
+
+    patient = get_patient(
+        db,
+        data.patient_id
+    )
+
+    doctor = get_user(
+        db,
+        data.doctor_user_id
+    )
+
+    if not patient:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found"
+        )
+
+    if not doctor or doctor["role"] != "doctor":
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Doctor not found"
+        )
+
+    # Staff booking authorization.
+    if source_role in {"asha", "doctor"}:
+
+        booker = get_user(
+            db,
+            booked_by
+        )
+
+        if not booker or booker["role"] not in {
+            "asha",
+            "doctor"
+        }:
+            db.close()
+            raise HTTPException(
+                status_code=403,
+                detail="Authorized staff required"
+            )
+
+        allowed, reason = staff_can_access_patient(
+            db,
+            booked_by,
+            data.patient_id
+        )
+
+        if not allowed:
+            db.close()
+            raise HTTPException(
+                status_code=403,
+                detail=reason
+            )
+
+    # Check doctor's availability.
+    availability = db.execute(
+        """
+        SELECT *
+        FROM doctor_availability
+        WHERE doctor_user_id = ?
+        """,
+        (
+            data.doctor_user_id,
+        )
+    ).fetchone()
+
+    if availability:
+        if availability["status"] not in {
+            "Available"
+        }:
+            db.close()
+            raise HTTPException(
+                status_code=409,
+                detail=f"Doctor is {availability['status']}"
+            )
+
+    # Prevent double booking.
+    conflict = db.execute(
+        """
+        SELECT id
+        FROM appointments
+        WHERE doctor_user_id = ?
+          AND appointment_date = ?
+          AND appointment_time = ?
+          AND status NOT IN (
+              'Cancelled',
+              'No-show'
+          )
+        LIMIT 1
+        """,
+        (
+            data.doctor_user_id,
+            data.appointment_date,
+            data.appointment_time
+        )
+    ).fetchone()
+
+    if conflict:
+        db.close()
+        raise HTTPException(
+            status_code=409,
+            detail="That appointment slot is already booked"
+        )
+
+    now = datetime.now().isoformat(
+        timespec="seconds"
+    )
+
+    # Patient requests require doctor confirmation.
+    # Staff-created appointments are immediately confirmed.
+    status = (
+        "Requested"
+        if source_role == "patient"
+        else "Confirmed"
+    )
+
+    cursor = db.execute(
+        """
+        INSERT INTO appointments (
+            patient_id,
+            doctor,
+            facility,
+            appointment_date,
+            appointment_time,
+            status,
+            facility_id,
+            doctor_user_id,
+            reason,
+            booked_by,
+            source_role,
+            created_at,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            data.patient_id,
+            doctor["name"],
+            doctor["facility_name"]
+                or doctor["facility_id"],
+            data.appointment_date,
+            data.appointment_time,
+            status,
+            doctor["facility_id"],
+            doctor["user_id"],
+            data.reason.strip(),
+            booked_by,
+            source_role,
+            now,
+            now
+        )
+    )
+
+    db.commit()
+
+    appointment = db.execute(
+        """
+        SELECT *
+        FROM appointments
+        WHERE id = ?
+        """,
+        (
+            cursor.lastrowid,
+        )
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Appointment requested successfully"
+            if source_role == "patient"
+            else "Appointment booked successfully",
+        "appointment": dict(appointment)
+    }
+@app.patch("/appointments/{appointment_id}")
+async def update_appointment(
+    appointment_id: int,
+    booked_by: str,
+    data: AppointmentUpdate
+):
+    db = get_db()
+
+    row = db.execute(
+        "SELECT * FROM appointments WHERE id = ?",
+        (appointment_id,)
+    ).fetchone()
+
+    if not row:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Appointment not found"
+        )
+
+    actor = get_user(db, booked_by)
+    patient = get_patient(db, row["patient_id"])
+
+    # Patients authenticate using their patient_id.
+    is_patient = (
+        patient is not None
+        and booked_by.strip() == row["patient_id"]
+    )
+
+    if is_patient:
+        actor_role = "patient"
+    elif actor and actor["role"] in {"asha", "doctor"}:
+        actor_role = actor["role"]
+    else:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail="Authorized user required"
+        )
+
+    # Staff access check.
+    if actor_role in {"asha", "doctor"}:
+        allowed, reason = staff_can_access_patient(
+            db,
+            booked_by,
+            row["patient_id"]
+        )
+
+        if not allowed and actor_role != "doctor":
+            db.close()
+            raise HTTPException(
+                status_code=403,
+                detail=reason
+            )
+
+    new_date = (
+        data.appointment_date
+        if data.appointment_date
+        else row["appointment_date"]
+    )
+
+    new_time = (
+        data.appointment_time
+        if data.appointment_time
+        else row["appointment_time"]
+    )
+
+    new_status = (
+        data.status
+        if data.status
+        else row["status"]
+    )
+
+    new_reason = (
+        data.reason
+        if data.reason is not None
+        else row["reason"]
+    )
+
+    # Prevent double-booking when rescheduling.
+    if (
+        new_date != row["appointment_date"]
+        or new_time != row["appointment_time"]
+    ) and row["doctor_user_id"]:
+
+        conflict = db.execute(
+            """
+            SELECT id
+            FROM appointments
+            WHERE doctor_user_id = ?
+              AND appointment_date = ?
+              AND appointment_time = ?
+              AND id <> ?
+              AND status NOT IN ('Cancelled', 'No-show')
+            LIMIT 1
+            """,
+            (
+                row["doctor_user_id"],
+                new_date,
+                new_time,
+                appointment_id
+            )
+        ).fetchone()
+
+        if conflict:
+            db.close()
+            raise HTTPException(
+                status_code=409,
+                detail="That appointment slot is already booked"
+            )
+
+    now = datetime.now().isoformat(
+        timespec="seconds"
+    )
+
+    db.execute(
+        """
+        UPDATE appointments
+        SET appointment_date = ?,
+            appointment_time = ?,
+            status = ?,
+            reason = ?,
+            updated_at = ?
+        WHERE id = ?
+        """,
+        (
+            new_date,
+            new_time,
+            new_status,
+            new_reason,
+            now,
+            appointment_id
+        )
+    )
+
+    db.commit()
+
+    updated = db.execute(
+        """
+        SELECT *
+        FROM appointments
+        WHERE id = ?
+        """,
+        (appointment_id,)
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "appointment": dict(updated)
+    }
+
 
 
 # =========================================================

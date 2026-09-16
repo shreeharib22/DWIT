@@ -1,7 +1,7 @@
 import './style.css'
 
 const app = document.querySelector('#app')
-const API_URL = 'https://sihgpt.onrender.com'
+const API_URL = 'http://127.0.0.1:8001'
 
 // =========================================================
 // OFFLINE / ONLINE STATUS
@@ -980,7 +980,7 @@ function renderLogin() {
           <footer class="panel-footer">
 
             <span>
-              SIHGPT / ACCESS
+              DWIT / ACCESS
             </span>
 
             <span>
@@ -1372,7 +1372,7 @@ function renderLogin() {
       () => {
 
         alert(
-          'SIHGPT Support\n\nPlease contact your project administrator.'
+          'DWIT Support\n\nPlease contact your project administrator.'
         )
 
       }
@@ -1790,199 +1790,794 @@ function renderVisitTimeline(visits) {
 /* =========================================================
    PATIENT DASHBOARD
 ========================================================= */
+async function loadFacilityFinder() {
 
-async function renderPatientDashboard(
-  patientId
-) {
+  const mapContainer =
+    document.querySelector('#facilityMap')
 
-  app.innerHTML = `
+  const listContainer =
+    document.querySelector('#facilityFinderList')
 
-    <div class="dashboard-page">
+  const status =
+    document.querySelector('#facilityLocationStatus')
 
-      <div class="dashboard-header">
+  const locationButton =
+    document.querySelector('#useMyLocationBtn')
 
-        <div>
+  if (
+    !mapContainer ||
+    !listContainer ||
+    !status
+  ) {
+    return
+  }
 
-          <div class="dashboard-kicker">
-            SIHGPT · CONNECTED CARE
+  let map = null
+  let userMarker = null
+  let accuracyCircle = null
+  let facilityMarkers = []
+
+  const clearMarkers = () => {
+
+    facilityMarkers.forEach(
+      marker => map?.removeLayer(marker)
+    )
+
+    facilityMarkers = []
+  }
+
+  const createMap = (
+    latitude,
+    longitude
+  ) => {
+
+    if (!map) {
+
+      map = L.map(
+        mapContainer,
+        {
+          zoomControl: true
+        }
+      )
+
+      L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        {
+          maxZoom: 19,
+          attribution:
+            '&copy; OpenStreetMap contributors'
+        }
+      ).addTo(map)
+
+    }
+
+    map.setView(
+      [latitude, longitude],
+      13
+    )
+
+    if (userMarker) {
+      map.removeLayer(userMarker)
+    }
+
+    if (accuracyCircle) {
+      map.removeLayer(accuracyCircle)
+    }
+
+    userMarker =
+      L.marker(
+        [latitude, longitude]
+      )
+        .addTo(map)
+        .bindPopup(
+          '<strong>Your Location</strong>'
+        )
+
+    accuracyCircle =
+      L.circle(
+        [latitude, longitude],
+        {
+          radius: 500,
+          weight: 1
+        }
+      ).addTo(map)
+  }
+
+  const renderFacilities = (
+    facilities,
+    userLatitude,
+    userLongitude
+  ) => {
+
+    listContainer.innerHTML = ''
+
+    if (!facilities.length) {
+
+      listContainer.innerHTML = `
+        <div class="empty-records">
+          No nearby healthcare facilities were found.
+          Try increasing your search area or moving to
+          a different location.
+        </div>
+      `
+
+      return
+    }
+
+    const bounds =
+      L.latLngBounds([
+        [userLatitude, userLongitude]
+      ])
+
+    clearMarkers()
+
+    facilities.forEach(
+      facility => {
+
+        const lat =
+          Number(facility.lat)
+
+        const lon =
+          Number(facility.lon)
+
+        if (
+          !Number.isFinite(lat) ||
+          !Number.isFinite(lon)
+        ) {
+          return
+        }
+
+        const name =
+          facility.tags?.name ||
+          'Healthcare Facility'
+
+        const amenity =
+          facility.tags?.amenity ||
+          'Healthcare'
+
+        const addressParts = [
+          facility.tags?.['addr:housenumber'],
+          facility.tags?.['addr:street'],
+          facility.tags?.['addr:city'],
+          facility.tags?.['addr:state']
+        ].filter(Boolean)
+
+        const address =
+          addressParts.join(', ') ||
+          'Address not available'
+
+        const marker =
+          L.marker(
+            [lat, lon]
+          )
+            .addTo(map)
+            .bindPopup(
+              `
+                <strong>
+                  ${escapeHtml(name)}
+                </strong>
+                <br>
+                ${escapeHtml(amenity)}
+                <br>
+                ${escapeHtml(address)}
+              `
+            )
+
+        facilityMarkers.push(marker)
+
+        bounds.extend(
+          [lat, lon]
+        )
+      }
+    )
+
+    map.fitBounds(
+      bounds,
+      {
+        padding: [30, 30]
+      }
+    )
+
+    const distanceKm = (
+      lat1,
+      lon1,
+      lat2,
+      lon2
+    ) => {
+
+      const earthRadius = 6371
+
+      const dLat =
+        (lat2 - lat1) *
+        Math.PI /
+        180
+
+      const dLon =
+        (lon2 - lon1) *
+        Math.PI /
+        180
+
+      const a =
+        Math.sin(dLat / 2) *
+        Math.sin(dLat / 2) +
+        Math.cos(
+          lat1 * Math.PI / 180
+        ) *
+        Math.cos(
+          lat2 * Math.PI / 180
+        ) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2)
+
+      const c =
+        2 *
+        Math.atan2(
+          Math.sqrt(a),
+          Math.sqrt(1 - a)
+        )
+
+      return earthRadius * c
+    }
+
+    const sorted =
+      facilities
+        .map(
+          facility => ({
+
+            ...facility,
+
+            distance:
+              distanceKm(
+                userLatitude,
+                userLongitude,
+                Number(facility.lat),
+                Number(facility.lon)
+              )
+
+          })
+        )
+        .filter(
+          facility =>
+            Number.isFinite(
+              facility.distance
+            )
+        )
+        .sort(
+          (a, b) =>
+            a.distance -
+            b.distance
+        )
+
+    listContainer.innerHTML =
+      sorted
+        .slice(0, 12)
+        .map(
+          facility => {
+
+            const name =
+              facility.tags?.name ||
+              'Healthcare Facility'
+
+            const amenity =
+              facility.tags?.amenity ||
+              'Healthcare'
+
+            const addressParts = [
+              facility.tags?.['addr:housenumber'],
+              facility.tags?.['addr:street'],
+              facility.tags?.['addr:city'],
+              facility.tags?.['addr:state']
+            ].filter(Boolean)
+
+            const address =
+              addressParts.join(', ') ||
+              'Address not available'
+
+            const destination =
+              `${facility.lat},${facility.lon}`
+
+            const navigationUrl =
+              `https://www.google.com/maps/dir/?api=1` +
+              `&origin=${encodeURIComponent(
+                `${userLatitude},${userLongitude}`
+              )}` +
+              `&destination=${encodeURIComponent(
+                destination
+              )}` +
+              `&travelmode=driving`
+
+            return `
+              <div class="facility-finder-item">
+
+                <div class="facility-finder-info">
+
+                  <div class="facility-finder-name">
+                    ${escapeHtml(name)}
+                  </div>
+
+                  <div class="facility-finder-type">
+                    ${escapeHtml(amenity)}
+                  </div>
+
+                  <div class="facility-finder-address">
+                    ${escapeHtml(address)}
+                  </div>
+
+                  <div class="facility-distance">
+                    ${facility.distance.toFixed(1)} km away
+                  </div>
+
+                </div>
+
+                <button
+                  type="button"
+                  class="facility-map-btn"
+                  data-navigation-url="${escapeHtml(
+                    navigationUrl
+                  )}"
+                >
+                  Navigate
+                </button>
+
+              </div>
+            `
+          }
+        )
+        .join('')
+
+    listContainer
+      .querySelectorAll(
+        '.facility-map-btn'
+      )
+      .forEach(
+        button => {
+
+          button.addEventListener(
+            'click',
+            () => {
+
+              const url =
+                button.dataset.navigationUrl
+
+              if (!url) {
+                return
+              }
+
+              window.open(
+                url,
+                '_blank',
+                'noopener,noreferrer'
+              )
+            }
+          )
+
+        }
+      )
+  }
+
+  const findNearbyFacilities =
+    (
+      latitude,
+      longitude
+    ) => {
+
+      createMap(
+        latitude,
+        longitude
+      )
+
+      status.textContent =
+        'Finding nearby healthcare facilities...'
+
+      listContainer.innerHTML = `
+        <div class="dashboard-loading">
+          Searching nearby healthcare facilities...
+        </div>
+      `
+
+      const query = `
+        [out:json][timeout:25];
+
+        (
+          node[
+            amenity=hospital
+          ](
+            around:10000,
+            ${latitude},
+            ${longitude}
+          );
+
+          way[
+            amenity=hospital
+          ](
+            around:10000,
+            ${latitude},
+            ${longitude}
+          );
+
+          relation[
+            amenity=hospital
+          ](
+            around:10000,
+            ${latitude},
+            ${longitude}
+          );
+
+          node[
+            amenity=clinic
+          ](
+            around:10000,
+            ${latitude},
+            ${longitude}
+          );
+
+          node[
+            amenity=doctors
+          ](
+            around:10000,
+            ${latitude},
+            ${longitude}
+          );
+        );
+
+        out center tags;
+      `
+
+      fetch(
+        'https://overpass-api.de/api/interpreter',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':
+              'application/x-www-form-urlencoded'
+          },
+          body:
+            `data=${encodeURIComponent(
+              query
+            )}`
+        }
+      )
+        .then(
+          response => {
+
+            if (!response.ok) {
+              throw new Error(
+                'Nearby facility service unavailable.'
+              )
+            }
+
+            return response.json()
+          }
+        )
+        .then(
+          data => {
+
+            const elements =
+              Array.isArray(
+                data?.elements
+              )
+                ? data.elements
+                : []
+
+            const facilities =
+              elements
+                .map(
+                  element => {
+
+                    const latitudeValue =
+                      element.lat ??
+                      element.center?.lat
+
+                    const longitudeValue =
+                      element.lon ??
+                      element.center?.lon
+
+                    return {
+                      ...element,
+                      lat: latitudeValue,
+                      lon: longitudeValue
+                    }
+                  }
+                )
+                .filter(
+                  element =>
+                    Number.isFinite(
+                      Number(element.lat)
+                    ) &&
+                    Number.isFinite(
+                      Number(element.lon)
+                    )
+                )
+
+            status.textContent =
+              `${facilities.length} nearby healthcare facilities found.`
+
+            renderFacilities(
+              facilities,
+              latitude,
+              longitude
+            )
+          }
+        )
+        .catch(
+          error => {
+
+            console.error(
+              'Nearby facility search failed:',
+              error
+            )
+
+            status.textContent =
+              'Unable to load nearby facilities.'
+
+            listContainer.innerHTML = `
+              <div class="empty-records">
+                Nearby facility search is temporarily unavailable.
+                Please try again.
+              </div>
+            `
+          }
+        )
+    }
+
+  const requestLocation = () => {
+
+    if (
+      !navigator.geolocation
+    ) {
+
+      status.textContent =
+        'Your browser does not support location services.'
+
+      return
+    }
+
+    locationButton.disabled = true
+
+    locationButton.textContent =
+      'Locating...'
+
+    status.textContent =
+      'Requesting your current location...'
+
+    navigator.geolocation.getCurrentPosition(
+      position => {
+
+        locationButton.disabled = false
+
+        locationButton.textContent =
+          '📍 Refresh My Location'
+
+        findNearbyFacilities(
+          position.coords.latitude,
+          position.coords.longitude
+        )
+      },
+
+      error => {
+
+        locationButton.disabled = false
+
+        locationButton.textContent =
+          '📍 Use My Location'
+
+        let message =
+          'Unable to get your location.'
+
+        if (
+          error.code ===
+          error.PERMISSION_DENIED
+        ) {
+
+          message =
+            'Location permission was denied. Allow location access in your browser and try again.'
+
+        } else if (
+          error.code ===
+          error.TIMEOUT
+        ) {
+
+          message =
+            'Location request timed out. Please try again.'
+
+        }
+
+        status.textContent =
+          message
+
+        listContainer.innerHTML = `
+          <div class="empty-records">
+            ${escapeHtml(message)}
           </div>
+        `
+      },
 
-          <h1>
-            Loading patient record...
-          </h1>
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 30000
+      }
+    )
+  }
 
+  locationButton?.addEventListener(
+    'click',
+    requestLocation
+  )
+
+  requestLocation()
+}
+
+async function renderPatientDashboard(patientId) {
+  app.innerHTML = `
+    <div class="dashboard-page">
+      <div class="dashboard-header">
+        <div>
+          <div class="dashboard-kicker">DWIT ·(Don't Worry I'm There) CONNECTED CARE</div>
+          <h1>Loading patient record...</h1>
+          <p>Preparing your appointments and health record</p>
         </div>
 
-
-        <button
-          class="logout-btn"
-          id="logoutBtn"
-          type="button"
-        >
+        <button class="logout-btn" id="logoutBtn" type="button">
           Logout
         </button>
-
       </div>
-
 
       <div class="dashboard-loading">
         Loading your health information...
       </div>
-
     </div>
-
   `
-
 
   attachLogout()
 
-
   try {
+    const [
+  patientData,
+  appointmentData,
+  prescriptionData,
+  labData,
+  referralData,
+  doctorData,
+  carepassData
+] 
+  = await Promise.all([
+      apiGet(`/patients/${encodeURIComponent(patientId)}`),
+      apiGet(`/patients/${encodeURIComponent(patientId)}/appointments`),
+      apiGet(`/patients/${encodeURIComponent(patientId)}/prescriptions`),
+      apiGet(`/patients/${encodeURIComponent(patientId)}/labs`),
+      apiGet(`/patients/${encodeURIComponent(patientId)}/referrals`),
+      apiGet('/doctors'),
+apiGet(
+  `/patients/${encodeURIComponent(patientId)}/carepass`
+)
+    ])
 
-    const results =
-      await Promise.allSettled([
+    const patient = patientData.patient || patientData
 
-        apiGet(
-          `/patients/${encodeURIComponent(
-            patientId
-          )}`
-        ),
+    const appointments = Array.isArray(appointmentData.appointments)
+      ? appointmentData.appointments
+      : []
 
-        apiGet(
-          `/patients/${encodeURIComponent(
-            patientId
-          )}/appointments`
-        ),
+    const prescriptions = Array.isArray(prescriptionData.prescriptions)
+      ? prescriptionData.prescriptions
+      : []
 
-        apiGet(
-          `/patients/${encodeURIComponent(
-            patientId
-          )}/prescriptions`
-        ),
+    const labs = Array.isArray(labData.labs)
+      ? labData.labs
+      : []
 
-        apiGet(
-          `/patients/${encodeURIComponent(
-            patientId
-          )}/labs`
-        ),
+    const referrals = Array.isArray(referralData.referrals)
+      ? referralData.referrals
+      : []
 
-        apiGet(
-          `/patients/${encodeURIComponent(
-            patientId
-          )}/referrals`
-        ),
+    const doctors = Array.isArray(doctorData.doctors)
+      ? doctorData.doctors
+      : []
 
-        apiGet(
-          `/patients/${encodeURIComponent(
-            patientId
-          )}/timeline`
-        )
+    const availableDoctors = doctors.filter(
+      doctor => doctor.availability_status === 'Available'
+    )
 
-      ])
+    const doctorOptions = availableDoctors.length
+      ? availableDoctors.map(doctor => `
+          <option value="${doctor.user_id}">
+            ${doctor.name} · ${doctor.specialty} · ${doctor.facility_name || doctor.facility_id}
+          </option>
+        `).join('')
+      : `
+          <option value="">
+            No doctors currently available
+          </option>
+        `
 
+    function appointmentStatus(status) {
+      const safe = String(status || 'Requested')
 
-    if (
-      results[0].status ===
-      'rejected'
-    ) {
-
-      throw results[0].reason
+      return `
+        <span class="status-pill">
+          ${safe}
+        </span>
+      `
     }
 
+    function appointmentRecords() {
+      if (!appointments.length) {
+        return `
+          <div class="empty-records">
+            No appointments yet.
+          </div>
+        `
+      }
 
-    const patientData =
-      results[0].value
+      return `
+        <div class="record-list">
+          ${appointments.map(item => `
+            <div class="record-item">
+              <strong>
+                ${item.doctor_name || item.doctor || 'Doctor'}
+              </strong>
 
+              <span>
+                ${item.appointment_date || 'Date not set'}
+                ·
+                ${item.appointment_time || 'Time not set'}
+              </span>
 
-    const patient =
-      patientData?.patient ||
-      patientData?.data ||
-      patientData
+              <span>
+                ${item.facility_name || item.facility || 'Facility'}
+              </span>
 
+              ${appointmentStatus(item.status)}
 
-    const appointments =
-      results[1].status ===
-      'fulfilled'
-        ? getArray(
-            results[1].value,
-            'appointments',
-            'data'
-          )
-        : []
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                ${
+                  item.status !== 'Cancelled' &&
+                  item.status !== 'Completed' &&
+                  item.status !== 'No-show'
+                    ? `
+                      <button
+                        type="button"
+                        class="secondary-action"
+                        data-reschedule-id="${item.id}"
+                      >
+                        Reschedule
+                      </button>
 
-
-    const prescriptions =
-      results[2].status ===
-      'fulfilled'
-        ? getArray(
-            results[2].value,
-            'prescriptions',
-            'data'
-          )
-        : []
-
-
-    const labs =
-      results[3].status ===
-      'fulfilled'
-        ? getArray(
-            results[3].value,
-            'labs',
-            'data'
-          )
-        : []
-
-
-    const referrals =
-      results[4].status ===
-      'fulfilled'
-        ? getArray(
-            results[4].value,
-            'referrals',
-            'data'
-          )
-        : []
-
-
-    const timeline =
-      results[5].status ===
-      'fulfilled'
-        ? getArray(
-            results[5].value,
-            'timeline',
-            'visits',
-            'data'
-          )
-        : []
-
+                      <button
+                        type="button"
+                        class="secondary-action"
+                        data-cancel-id="${item.id}"
+                      >
+                        Cancel
+                      </button>
+                    `
+                    : ''
+                }
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `
+    }
 
     app.innerHTML = `
-
       <div class="dashboard-page">
 
-
         <div class="dashboard-header">
-
           <div>
-
             <div class="dashboard-kicker">
-              SIHGPT · PATIENT PORTAL
+             DWIT (Don't worry I'm there) · CONNECTED CARE
             </div>
 
             <h1>
-              Welcome,
-              ${escapeHtml(
-                patient?.name ||
-                patientId
-              )}
+              Welcome, ${patient.name || 'Patient'}
             </h1>
 
             <p>
               Your connected rural health record
             </p>
-
           </div>
-
 
           <button
             class="logout-btn"
@@ -1991,188 +2586,415 @@ async function renderPatientDashboard(
           >
             Logout
           </button>
-
         </div>
 
+       <section class="dashboard-card carepass-card">
+  <div class="card-heading">
+    <div>
+      <div class="card-kicker">CARE CONTINUITY</div>
+      <h2>🪪 CAREPASS</h2>
+      <p>Continuity-Aware Patient Passport</p>
+    </div>
 
-        <div class="dashboard-grid">
+    <div class="carepass-status">
+      ${carepassData?.carepass?.current_status?.health_status || 'Stable'}
+    </div>
+  </div>
 
+  <div class="carepass-summary">
 
-          <section
-            class="dashboard-card profile-card"
-          >
+    <div class="carepass-stat">
+      <span>Last Visit</span>
+      <strong>
+        ${
+          carepassData?.carepass?.current_status?.last_visit?.visit_date
+          || 'No visits'
+        }
+      </strong>
+    </div>
 
+    <div class="carepass-stat">
+      <span>Open Items</span>
+      <strong>
+        ${
+          Array.isArray(carepassData?.carepass?.open_items)
+            ? carepassData.carepass.open_items.length
+            : 0
+        }
+      </strong>
+    </div>
+
+    <div class="carepass-stat">
+      <span>Open Referrals</span>
+      <strong>
+        ${
+          Array.isArray(carepassData?.carepass?.open_referrals)
+            ? carepassData.carepass.open_referrals.length
+            : 0
+        }
+      </strong>
+    </div>
+
+    <div class="carepass-stat">
+      <span>Appointments</span>
+      <strong>
+        ${
+          Array.isArray(carepassData?.carepass?.active_appointments)
+            ? carepassData.carepass.active_appointments.length
+            : 0
+        }
+      </strong>
+    </div>
+
+  </div>
+
+  <div class="carepass-next">
+    <span>NEXT CARE ACTION</span>
+
+    <strong>
+      ${
+        carepassData?.carepass?.next_action?.title
+        || 'Continue routine follow-up'
+      }
+    </strong>
+
+    <p>
+      ${
+        carepassData?.carepass?.next_action?.detail
+        || 'Review the latest patient record.'
+      }
+    </p>
+  </div>
+
+  <div class="carepass-journey">
+    <span>CARE JOURNEY</span>
+
+    <div class="carepass-flow">
+      ${
+        Array.isArray(carepassData?.carepass?.care_journey)
+          ? carepassData.carepass.care_journey
+              .slice(-6)
+              .map(item => `
+                <div class="carepass-step">
+                  <strong>${item.title || item.type}</strong>
+                  <small>
+                    ${item.status || ''}
+                  </small>
+                </div>
+              `)
+              .join('<div class="carepass-arrow">→</div>')
+          : '<div class="carepass-empty">No care journey recorded yet.</div>'
+      }
+    </div>
+  </div>
+
+  <div class="carepass-handover">
+    <span>HANDOVER BRIEF</span>
+    <p>
+      ${
+        carepassData?.carepass?.handover_brief
+        || 'No handover information available.'
+      }
+    </p>
+  </div>
+</section>
+<section class="dashboard-card voice-symptom-card">
+
+  <div class="card-heading">
+    <div>
+      <div class="card-kicker">
+        AI HEALTH ASSISTANT
+      </div>
+
+      <h2>
+        🎙️ Tell Us Your Symptoms
+      </h2>
+
+      <p>
+        Speak naturally and DWIT will explain your reported symptoms
+        in your selected language.
+      </p>
+    </div>
+
+    <div class="voice-language-badge">
+      ${LANGUAGES[selectedLanguage] || 'English'}
+    </div>
+  </div>
+
+  <div class="voice-symptom-content">
+
+    <button
+      type="button"
+      id="voiceSymptomBtn"
+      class="voice-record-btn"
+    >
+      <span class="voice-record-icon">🎙️</span>
+
+      <span>
+        <strong id="voiceSymptomBtnText">
+          Start Speaking
+        </strong>
+
+        <small>
+          Tap and describe how you are feeling
+        </small>
+      </span>
+    </button>
+
+    <div
+      id="voiceSymptomStatus"
+      class="voice-status"
+    >
+      Ready to listen.
+    </div>
+
+    <div
+      id="voiceTranscript"
+      class="voice-transcript"
+    >
+      <div class="voice-empty">
+        Your spoken symptoms will appear here.
+      </div>
+    </div>
+
+    <button
+      type="button"
+      id="voiceAnalyzeBtn"
+      class="primary-action"
+      disabled
+    >
+      ✨ Explain My Symptoms
+    </button>
+
+    <div
+      id="voiceAiResult"
+      class="voice-ai-result"
+      hidden
+    >
+
+      <div class="voice-result-section">
+        <span>SUMMARY</span>
+        <p id="voiceSummary"></p>
+      </div>
+
+      <div class="voice-result-section">
+        <span>WHAT THIS MEANS</span>
+        <p id="voiceExplanation"></p>
+      </div>
+
+      <div class="voice-result-section">
+        <span>WHAT TO DO NEXT</span>
+        <p id="voiceNextSteps"></p>
+      </div>
+
+      <div class="voice-result-section voice-warning-section">
+        <span>IMPORTANT</span>
+        <p id="voiceWarning"></p>
+      </div>
+
+      <button
+        type="button"
+        id="voiceSpeakResultBtn"
+        class="secondary-action"
+      >
+        🔊 Listen
+      </button>
+
+    </div>
+
+  </div>
+
+</section>
+<div class="dashboard-grid">
+
+          <div class="dashboard-card profile-card">
             <div class="card-heading">
               Patient Profile
             </div>
 
-
             <div class="profile-grid">
 
-
               <div>
-
-                <span>
-                  Patient ID
-                </span>
-
-                <strong>
-                  ${escapeHtml(
-                    patient?.patient_id ||
-                    patientId
-                  )}
-                </strong>
-
+                <span>Patient ID</span>
+                <strong>${patient.patient_id || '—'}</strong>
               </div>
 
-
               <div>
-
-                <span>
-                  Name
-                </span>
-
-                <strong>
-                  ${escapeHtml(
-                    patient?.name ||
-                    '—'
-                  )}
-                </strong>
-
+                <span>Name</span>
+                <strong>${patient.name || '—'}</strong>
               </div>
 
-
               <div>
-
-                <span>
-                  Age
-                </span>
-
-                <strong>
-                  ${escapeHtml(
-                    patient?.age ??
-                    '—'
-                  )}
-                </strong>
-
+                <span>Age</span>
+                <strong>${patient.age ?? '—'}</strong>
               </div>
 
-
               <div>
-
-                <span>
-                  Gender
-                </span>
-
-                <strong>
-                  ${escapeHtml(
-                    patient?.gender ||
-                    '—'
-                  )}
-                </strong>
-
+                <span>Gender</span>
+                <strong>${patient.gender || '—'}</strong>
               </div>
 
-
               <div>
-
-                <span>
-                  Village
-                </span>
-
-                <strong>
-                  ${escapeHtml(
-                    patient?.village ||
-                    '—'
-                  )}
-                </strong>
-
+                <span>Village</span>
+                <strong>${patient.village || '—'}</strong>
               </div>
 
-
               <div>
-
-                <span>
-                  Blood Group
-                </span>
-
-                <strong>
-                  ${escapeHtml(
-                    patient?.blood_group ||
-                    '—'
-                  )}
-                </strong>
-
+                <span>Blood Group</span>
+                <strong>${patient.blood_group || '—'}</strong>
               </div>
 
-
               <div>
-
-                <span>
-                  Phone
-                </span>
-
-                <strong>
-                  ${escapeHtml(
-                    patient?.phone ||
-                    '—'
-                  )}
-                </strong>
-
+                <span>Phone</span>
+                <strong>${patient.phone || '—'}</strong>
               </div>
 
-
               <div>
-
-                <span>
-                  Facility
-                </span>
-
-                <strong>
-                  ${escapeHtml(
-                    patient?.facility_name ||
-                    patient?.facility ||
-                    '—'
-                  )}
-                </strong>
-
+                <span>Health Status</span>
+                ${appointmentStatus(patient.health_status || 'Stable')}
               </div>
-
 
             </div>
+          </div>
 
-          </section>
+          <div class="dashboard-card">
+            <div class="card-heading">
+              Book a Doctor Appointment
+            </div>
 
+            <form id="patientAppointmentForm">
 
-          <section class="dashboard-card">
+              <div class="form-group">
+                <label for="appointmentDoctor">
+                  Doctor
+                </label>
+
+                <select
+                  id="appointmentDoctor"
+                  class="form-control"
+                  required
+                >
+                  <option value="">
+                    Select a doctor
+                  </option>
+                  ${doctorOptions}
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="appointmentDate">
+                  Date
+                </label>
+
+                <input
+                  id="appointmentDate"
+                  class="form-control"
+                  type="date"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="appointmentTime">
+                  Time
+                </label>
+
+                <select
+                  id="appointmentTime"
+                  class="form-control"
+                  required
+                >
+                  <option value="">
+                    Select doctor first
+                  </option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="appointmentReason">
+                  Reason
+                </label>
+
+                <textarea
+                  id="appointmentReason"
+                  class="form-control"
+                  rows="3"
+                  placeholder="Describe the reason for your visit"
+                ></textarea>
+              </div>
+
+              <button
+                type="submit"
+                class="primary-action"
+                id="bookPatientAppointmentBtn"
+                ${availableDoctors.length ? '' : 'disabled'}
+              >
+                Request Appointment
+              </button>
+
+              <div
+                id="appointmentFormMessage"
+                class="form-message"
+                style="margin-top:10px;"
+              ></div>
+
+            </form>
+          </div>
+
+          <div class="dashboard-card">
 
             <div class="card-heading">
-              Visits / Timeline
+              My Appointments
             </div>
 
-            ${renderRecords(
-              timeline,
-              'Visit'
-            )}
+            ${appointmentRecords()}
 
-          </section>
+          </div>
 
+         <section class="dashboard-card facility-finder-card">
 
-          <section class="dashboard-card">
+  <div class="facility-finder-header">
 
-            <div class="card-heading">
-              Appointments
-            </div>
+    <div>
+      <div class="card-heading">
+        Find Care Near You
+      </div>
 
-            ${renderRecords(
-              appointments,
-              'Appointment'
-            )}
+      <p class="dashboard-description">
+        Find healthcare facilities near your current location
+        and get real navigation directions.
+      </p>
+    </div>
 
-          </section>
+    <button
+      type="button"
+      class="facility-location-btn"
+      id="useMyLocationBtn"
+    >
+      📍 Use My Location
+    </button>
 
+  </div>
 
-          <section class="dashboard-card">
+  <div
+    id="facilityLocationStatus"
+    class="facility-location-status"
+  >
+    Location not detected yet.
+  </div>
+
+  <div
+    id="facilityMap"
+    class="facility-map"
+  ></div>
+
+  <div
+    id="facilityFinderList"
+    class="facility-finder-list"
+  ></div>
+
+</section>
+          <div class="dashboard-card">
 
             <div class="card-heading">
               Prescriptions
@@ -2183,10 +3005,9 @@ async function renderPatientDashboard(
               'Prescription'
             )}
 
-          </section>
+          </div>
 
-
-          <section class="dashboard-card">
+          <div class="dashboard-card">
 
             <div class="card-heading">
               Lab Reports
@@ -2197,12 +3018,9 @@ async function renderPatientDashboard(
               'Lab Report'
             )}
 
-          </section>
+          </div>
 
-
-          <section
-            class="dashboard-card dashboard-card-wide"
-          >
+          <div class="dashboard-card">
 
             <div class="card-heading">
               Referrals
@@ -2213,42 +3031,753 @@ async function renderPatientDashboard(
               'Referral'
             )}
 
-          </section>
-
+          </div>
 
         </div>
 
       </div>
-
     `
 
-
     attachLogout()
+loadFacilityFinder()
+
+    // =====================================================
+    // PATIENT VOICE SYMPTOM ASSISTANT
+    // =====================================================
+
+    const voiceButton =
+      document.querySelector('#voiceSymptomBtn')
+
+    const voiceButtonText =
+      document.querySelector('#voiceSymptomBtnText')
+
+    const voiceStatus =
+      document.querySelector('#voiceSymptomStatus')
+
+    const transcriptBox =
+      document.querySelector('#voiceTranscript')
+
+    const analyzeButton =
+      document.querySelector('#voiceAnalyzeBtn')
+
+    const resultBox =
+      document.querySelector('#voiceAiResult')
+
+    const summaryBox =
+      document.querySelector('#voiceSummary')
+
+    const explanationBox =
+      document.querySelector('#voiceExplanation')
+
+    const nextStepsBox =
+      document.querySelector('#voiceNextSteps')
+
+    const warningBox =
+      document.querySelector('#voiceWarning')
+
+    const speakResultButton =
+      document.querySelector('#voiceSpeakResultBtn')
+
+
+    let voiceTranscriptText = ''
+    let speechRecognition = null
+    let isListening = false
+
+
+    const speechLanguageMap = {
+      en: 'en-IN',
+      hi: 'hi-IN',
+      kn: 'kn-IN',
+      mr: 'mr-IN',
+      ta: 'ta-IN',
+      te: 'te-IN',
+      ml: 'ml-IN',
+      bn: 'bn-IN',
+      gu: 'gu-IN',
+      pa: 'pa-IN',
+      as: 'as-IN'
+    }
+
+
+    const SpeechRecognition =
+      window.SpeechRecognition ||
+      window.webkitSpeechRecognition
+
+
+    if (!SpeechRecognition) {
+
+      if (voiceStatus) {
+        voiceStatus.textContent =
+          'Voice input is not supported in this browser. Please use Chrome or Edge.'
+      }
+
+      if (voiceButton) {
+        voiceButton.disabled = true
+      }
+
+    } else {
+
+      speechRecognition =
+        new SpeechRecognition()
+
+      speechRecognition.continuous = false
+      speechRecognition.interimResults = true
+
+      speechRecognition.lang =
+        speechLanguageMap[selectedLanguage] ||
+        'en-IN'
+
+
+      speechRecognition.onstart = () => {
+
+        isListening = true
+
+        if (voiceButton) {
+          voiceButton.classList.add(
+            'voice-recording'
+          )
+        }
+
+        if (voiceButtonText) {
+          voiceButtonText.textContent =
+            'Listening...'
+        }
+
+        if (voiceStatus) {
+          voiceStatus.textContent =
+            'Speak clearly. I am listening.'
+        }
+      }
+
+
+      speechRecognition.onresult =
+        event => {
+
+          let finalText = ''
+          let interimText = ''
+
+          for (
+            let i = event.resultIndex;
+            i < event.results.length;
+            i++
+          ) {
+
+            const transcript =
+              event.results[i][0].transcript
+
+            if (
+              event.results[i].isFinal
+            ) {
+              finalText += transcript
+            } else {
+              interimText += transcript
+            }
+          }
+
+          const displayText =
+            `${voiceTranscriptText} ${finalText} ${interimText}`
+              .trim()
+
+          if (transcriptBox) {
+
+            transcriptBox.innerHTML = `
+              <div class="voice-transcript-label">
+                YOU SAID
+              </div>
+
+              <p>
+                ${escapeHtml(displayText)}
+              </p>
+            `
+          }
+
+          if (finalText.trim()) {
+
+            voiceTranscriptText =
+              `${voiceTranscriptText} ${finalText}`
+                .trim()
+
+            if (analyzeButton) {
+              analyzeButton.disabled = false
+            }
+          }
+        }
+
+
+      speechRecognition.onerror =
+        event => {
+
+          console.error(
+            'Speech recognition error:',
+            event.error
+          )
+
+          isListening = false
+
+          if (voiceButton) {
+            voiceButton.classList.remove(
+              'voice-recording'
+            )
+          }
+
+          if (voiceButtonText) {
+            voiceButtonText.textContent =
+              'Start Speaking'
+          }
+
+          if (voiceStatus) {
+
+            if (
+              event.error ===
+              'not-allowed'
+            ) {
+
+              voiceStatus.textContent =
+                'Microphone permission was denied. Please allow microphone access.'
+
+            } else {
+
+              voiceStatus.textContent =
+                'Unable to understand the recording. Please try again.'
+            }
+          }
+        }
+
+
+      speechRecognition.onend =
+        () => {
+
+          isListening = false
+
+          if (voiceButton) {
+            voiceButton.classList.remove(
+              'voice-recording'
+            )
+          }
+
+          if (voiceButtonText) {
+            voiceButtonText.textContent =
+              'Start Speaking'
+          }
+
+          if (
+            voiceTranscriptText &&
+            voiceStatus
+          ) {
+
+            voiceStatus.textContent =
+              'Recording complete. You can review it or ask DWIT to explain it.'
+          }
+        }
+
+
+      voiceButton?.addEventListener(
+        'click',
+        () => {
+
+          if (isListening) {
+
+            speechRecognition.stop()
+
+            return
+          }
+
+          voiceTranscriptText = ''
+
+          if (transcriptBox) {
+
+            transcriptBox.innerHTML = `
+              <div class="voice-transcript-label">
+                LISTENING
+              </div>
+
+              <p>
+                Start speaking...
+              </p>
+            `
+          }
+
+          if (analyzeButton) {
+            analyzeButton.disabled = true
+          }
+
+          speechRecognition.lang =
+            speechLanguageMap[selectedLanguage] ||
+            'en-IN'
+
+          speechRecognition.start()
+        }
+      )
+
+
+      analyzeButton?.addEventListener(
+        'click',
+        async () => {
+
+          const symptoms =
+            voiceTranscriptText.trim()
+
+          if (!symptoms) {
+            return
+          }
+
+          analyzeButton.disabled = true
+          analyzeButton.textContent =
+            '✨ Understanding...'
+
+          if (voiceStatus) {
+            voiceStatus.textContent =
+              'DWIT AI is preparing your explanation...'
+          }
+
+          try {
+
+            const response =
+              await fetch(
+                `${API_URL}/ai/patient-explanation`,
+                {
+                  method: 'POST',
+
+                  headers: {
+                    'Content-Type':
+                      'application/json'
+                  },
+
+                  body: JSON.stringify({
+                    patient_id:
+                      patientId,
+
+                    symptoms:
+                      symptoms,
+
+                    language:
+                      selectedLanguage
+                  })
+                }
+              )
+
+
+            const data =
+              await response.json()
+
+
+            if (!response.ok) {
+
+              throw new Error(
+                data.detail ||
+                data.message ||
+                'Unable to generate explanation.'
+              )
+            }
+
+
+            if (summaryBox) {
+              summaryBox.textContent =
+                data.summary || ''
+            }
+
+            if (explanationBox) {
+              explanationBox.textContent =
+                data.explanation || ''
+            }
+
+            if (nextStepsBox) {
+              nextStepsBox.textContent =
+                data.next_steps || ''
+            }
+
+            if (warningBox) {
+              warningBox.textContent =
+                data.warning || ''
+            }
+
+
+            if (resultBox) {
+              resultBox.hidden = false
+            }
+
+            if (voiceStatus) {
+              voiceStatus.textContent =
+                'Explanation ready.'
+            }
+
+          } catch (error) {
+
+            console.error(
+              'Patient AI explanation error:',
+              error
+            )
+
+            if (voiceStatus) {
+              voiceStatus.textContent =
+                error.message
+            }
+
+          } finally {
+
+            analyzeButton.disabled = false
+
+            analyzeButton.textContent =
+              '✨ Explain My Symptoms'
+          }
+        }
+      )
+
+
+      speakResultButton?.addEventListener(
+        'click',
+        () => {
+
+          const text = [
+            summaryBox?.textContent,
+            explanationBox?.textContent,
+            nextStepsBox?.textContent,
+            warningBox?.textContent
+          ]
+            .filter(Boolean)
+            .join('. ')
+
+          if (!text) {
+            return
+          }
+
+          if (
+            !window.speechSynthesis
+          ) {
+            alert(
+              'Text-to-speech is not supported in this browser.'
+            )
+
+            return
+          }
+
+          window.speechSynthesis.cancel()
+
+          const utterance =
+            new SpeechSynthesisUtterance(text)
+
+          const voiceOutputLanguages = {
+            en: 'en-IN',
+            hi: 'hi-IN',
+            kn: 'kn-IN',
+            mr: 'mr-IN',
+            ta: 'ta-IN',
+            te: 'te-IN',
+            ml: 'ml-IN',
+            bn: 'bn-IN',
+            gu: 'gu-IN',
+            pa: 'pa-IN',
+            as: 'as-IN'
+          }
+
+          utterance.lang =
+            voiceOutputLanguages[
+              selectedLanguage
+            ] || 'en-IN'
+
+          utterance.rate = 0.9
+
+          window.speechSynthesis.speak(
+            utterance
+          )
+        }
+      )
+    }
+
+
+    const dateInput =
+      document.querySelector('#appointmentDate')
+
+    if (dateInput) {
+      const today = new Date()
+
+      const yyyy = today.getFullYear()
+      const mm = String(today.getMonth() + 1).padStart(2, '0')
+      const dd = String(today.getDate()).padStart(2, '0')
+
+      dateInput.min = `${yyyy}-${mm}-${dd}`
+    }
+
+    const doctorSelect =
+      document.querySelector('#appointmentDoctor')
+
+    const timeSelect =
+      document.querySelector('#appointmentTime')
+
+    doctorSelect?.addEventListener('change', () => {
+      const doctor =
+        availableDoctors.find(
+          item => item.user_id === doctorSelect.value
+        )
+
+      if (!doctor || !timeSelect) {
+        return
+      }
+
+      const start =
+        doctor.start_time || '09:00'
+
+      const end =
+        doctor.end_time || '17:00'
+
+      const [startHour, startMinute] =
+        start.split(':').map(Number)
+
+      const [endHour, endMinute] =
+        end.split(':').map(Number)
+
+      const startTotal =
+        startHour * 60 + startMinute
+
+      const endTotal =
+        endHour * 60 + endMinute
+
+      const slots = []
+
+      for (
+        let minutes = startTotal;
+        minutes <= endTotal;
+        minutes += 30
+      ) {
+        const hour24 =
+          Math.floor(minutes / 60)
+
+        const minute =
+          minutes % 60
+
+        const suffix =
+          hour24 >= 12 ? 'PM' : 'AM'
+
+        const hour12 =
+          hour24 % 12 || 12
+
+        slots.push(`
+          <option value="${String(hour24).padStart(2, '0')}:${String(minute).padStart(2, '0')}">
+            ${hour12}:${String(minute).padStart(2, '0')} ${suffix}
+          </option>
+        `)
+      }
+
+      timeSelect.innerHTML = `
+        <option value="">
+          Select time
+        </option>
+        ${slots.join('')}
+      `
+    })
+
+    document
+      .querySelector('#patientAppointmentForm')
+      ?.addEventListener('submit', async event => {
+
+        event.preventDefault()
+
+        const message =
+          document.querySelector('#appointmentFormMessage')
+
+        const doctorUserId =
+          document.querySelector('#appointmentDoctor')?.value
+
+        const appointmentDate =
+          document.querySelector('#appointmentDate')?.value
+
+        const appointmentTime =
+          document.querySelector('#appointmentTime')?.value
+
+        const reason =
+          document.querySelector('#appointmentReason')?.value || ''
+
+        if (
+          !doctorUserId ||
+          !appointmentDate ||
+          !appointmentTime
+        ) {
+          if (message) {
+            message.textContent =
+              'Please select doctor, date and time.'
+          }
+
+          return
+        }
+
+        const button =
+          document.querySelector('#bookPatientAppointmentBtn')
+
+        if (button) {
+          button.disabled = true
+          button.textContent = 'Requesting...'
+        }
+
+        try {
+          const response = await fetch(
+            `${API_URL}/appointments?booked_by=${encodeURIComponent(patientId)}&source_role=patient`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                patient_id: patientId,
+                doctor_user_id: doctorUserId,
+                appointment_date: appointmentDate,
+                appointment_time: appointmentTime,
+                reason
+              })
+            }
+          )
+
+          const data = await response.json()
+
+          if (!response.ok) {
+            throw new Error(
+              data.detail ||
+              data.message ||
+              'Unable to request appointment.'
+            )
+          }
+
+          if (message) {
+            message.textContent =
+              'Appointment requested successfully.'
+          }
+
+          await renderPatientDashboard(patientId)
+
+        } catch (error) {
+
+          console.error(error)
+
+          if (message) {
+            message.textContent =
+              error.message
+          }
+
+          if (button) {
+            button.disabled = false
+            button.textContent = 'Request Appointment'
+          }
+        }
+      })
+
+    document
+      .querySelectorAll('[data-cancel-id]')
+      .forEach(button => {
+
+        button.addEventListener('click', async () => {
+
+          const appointmentId =
+            button.dataset.cancelId
+
+          try {
+            const response = await fetch(
+              `${API_URL}/appointments/${appointmentId}?booked_by=${encodeURIComponent(patientId)}`,
+              {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  status: 'Cancelled'
+                })
+              }
+            )
+
+            const data = await response.json()
+
+            if (!response.ok) {
+              throw new Error(
+                data.detail ||
+                'Unable to cancel appointment.'
+              )
+            }
+
+            await renderPatientDashboard(patientId)
+
+          } catch (error) {
+            console.error(error)
+            alert(error.message)
+          }
+        })
+      })
+
+    document
+      .querySelectorAll('[data-reschedule-id]')
+      .forEach(button => {
+
+        button.addEventListener('click', async () => {
+
+          const appointmentId =
+            button.dataset.rescheduleId
+
+          const newDate =
+            prompt('Enter new date (YYYY-MM-DD):')
+
+          if (!newDate) {
+            return
+          }
+
+          const newTime =
+            prompt('Enter new time (HH:MM):')
+
+          if (!newTime) {
+            return
+          }
+
+          try {
+            const response = await fetch(
+              `${API_URL}/appointments/${appointmentId}?booked_by=${encodeURIComponent(patientId)}`,
+              {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  appointment_date: newDate,
+                  appointment_time: newTime
+                })
+              }
+            )
+
+            const data = await response.json()
+
+            if (!response.ok) {
+              throw new Error(
+                data.detail ||
+                'Unable to reschedule appointment.'
+              )
+            }
+
+            await renderPatientDashboard(patientId)
+
+          } catch (error) {
+            console.error(error)
+            alert(error.message)
+          }
+        })
+      })
 
   } catch (error) {
 
     console.error(error)
 
-
     app.innerHTML = `
-
       <div class="dashboard-page">
-
 
         <div class="dashboard-header">
 
           <div>
-
             <div class="dashboard-kicker">
-              SIHGPT
+              DWIT (Don't worry I'm there)
             </div>
 
             <h1>
               Unable to load patient data
             </h1>
 
+            <p>
+              ${error.message}
+            </p>
           </div>
-
 
           <button
             class="logout-btn"
@@ -2260,7 +3789,6 @@ async function renderPatientDashboard(
 
         </div>
 
-
         <div class="dashboard-error">
 
           <h3>
@@ -2268,19 +3796,17 @@ async function renderPatientDashboard(
           </h3>
 
           <p>
-            ${escapeHtml(
-              error.message
-            )}
+            Please check the backend and try again.
           </p>
 
         </div>
 
       </div>
-
     `
 
-
     attachLogout()
+
+    
   }
 }
 
@@ -2299,9 +3825,11 @@ async function renderStaffDashboard(
 
 
   let patients = []
-  let referrals = []
-  let currentPatient = null
-  let currentVisits = []
+let referrals = []
+let currentPatient = null
+let currentVisits = []
+let inventory = []
+let diagnostics = []
 
 
   let session = {}
@@ -2361,7 +3889,60 @@ async function renderStaffDashboard(
     )
   }
 
+  async function loadInventory() {
+    const facilityId =
+      sessionUser?.facility_id ||
+      selectedFacility ||
+      ''
 
+    const url = facilityId
+      ? `/inventory?facility_id=${encodeURIComponent(facilityId)}`
+      : '/inventory'
+
+    const data = await apiGet(url)
+
+    if (data?.success === false) {
+      throw new Error(
+        data.message ||
+        data.detail ||
+        'Unable to load medicine inventory.'
+      )
+    }
+
+    return getArray(
+      data,
+      'inventory',
+      'data'
+    )
+  }
+
+    async function loadDiagnostics() {
+    const facilityId =
+      sessionUser?.facility_id ||
+      selectedFacility ||
+      ''
+
+    const url = facilityId
+      ? `/diagnostics?facility_id=${encodeURIComponent(facilityId)}`
+      : '/diagnostics'
+
+    const data =
+      await apiGet(url)
+
+    if (data?.success === false) {
+      throw new Error(
+        data.message ||
+        data.detail ||
+        'Unable to load diagnostics.'
+      )
+    }
+
+    return getArray(
+      data,
+      'diagnostics',
+      'data'
+    )
+  }
   async function loadReferrals() {
 
     if (isAsha) {
@@ -2609,6 +4190,207 @@ async function renderStaffDashboard(
   }
 
 
+  async function openAppointmentsCenter() {
+
+    const existing = document.querySelector('#appointmentsCenterOverlay')
+    if (existing) existing.remove()
+
+    const overlay = document.createElement('div')
+    overlay.id = 'appointmentsCenterOverlay'
+    overlay.className = 'appointments-center-overlay'
+    overlay.innerHTML = `
+      <div class="appointments-center-modal">
+        <div class="appointments-center-head">
+          <div>
+            <div class="dashboard-kicker">DWIT (Don't worry I'm there) · CARE COORDINATION</div>
+            <h2>Appointment Center</h2>
+            <p>Book, view and manage real appointments linked to the patient record.</p>
+          </div>
+          <button type="button" class="modal-close-btn" id="closeAppointmentsCenter">×</button>
+        </div>
+
+        <div class="appointments-center-grid">
+          <section class="dashboard-card">
+            <div class="card-heading">${isAsha ? 'Book for a Patient' : 'Today / Upcoming Appointments'}</div>
+            ${isAsha ? `
+              <form id="appointmentBookingForm" class="appointment-form">
+                <label>Patient
+                  <select id="appointmentPatient" required>
+                    <option value="">Select patient</option>
+                    ${patients.map(p => `<option value="${escapeHtml(p.patient_id)}">${escapeHtml(p.name)} · ${escapeHtml(p.patient_id)}</option>`).join('')}
+                  </select>
+                </label>
+                <label>Doctor
+                  <select id="appointmentDoctor" required>
+                    <option value="">Loading doctors…</option>
+                  </select>
+                </label>
+                <div class="appointment-doctor-meta" id="appointmentDoctorMeta">Select a doctor to see availability.</div>
+                <div class="appointment-two-col">
+                  <label>Date<input id="appointmentDate" type="date" required></label>
+                  <label>Time<input id="appointmentTime" type="time" required></label>
+                </div>
+                <label>Reason
+                  <textarea id="appointmentReason" rows="3" placeholder="Reason for appointment"></textarea>
+                </label>
+                <button class="primary-action" type="submit">Book Appointment</button>
+              </form>
+            ` : `
+              <div id="doctorAppointmentList" class="appointment-list">Loading appointments…</div>
+            `}
+          </section>
+
+          <section class="dashboard-card">
+            <div class="card-heading">${isAsha ? 'Upcoming Appointments' : 'My Availability'}</div>
+            ${isAsha ? `
+              <div id="staffAppointmentList" class="appointment-list">Loading appointments…</div>
+            ` : `
+              <form id="doctorAvailabilityForm" class="appointment-form">
+                <label>Status
+                  <select id="doctorAvailabilityStatus">
+                    <option>Available</option>
+                    <option>Busy</option>
+                    <option>Unavailable</option>
+                    <option>On Leave</option>
+                    <option>Emergency Only</option>
+                  </select>
+                </label>
+                <label>Specialty<input id="doctorAvailabilitySpecialty" value="General Medicine"></label>
+                <label>Working Days<input id="doctorAvailabilityDays" value="Mon,Tue,Wed,Thu,Fri"></label>
+                <div class="appointment-two-col">
+                  <label>Start<input id="doctorAvailabilityStart" type="time" value="09:00"></label>
+                  <label>End<input id="doctorAvailabilityEnd" type="time" value="17:00"></label>
+                </div>
+                <button class="primary-action" type="submit">Save Availability</button>
+                <div class="appointment-doctor-meta" id="availabilitySaveMessage"></div>
+              </form>
+            `}
+          </section>
+        </div>
+      </div>
+    `
+
+    document.body.appendChild(overlay)
+    document.querySelector('#closeAppointmentsCenter')?.addEventListener('click', () => overlay.remove())
+    overlay.addEventListener('click', event => { if (event.target === overlay) overlay.remove() })
+
+    try {
+      const doctorsData = await apiGet(`/doctors?facility_id=${encodeURIComponent(sessionUser.facility_id || '')}`)
+      const doctors = doctorsData.doctors || []
+
+      if (isAsha) {
+        const doctorSelect = document.querySelector('#appointmentDoctor')
+        doctorSelect.innerHTML = `<option value="">Select doctor</option>` + doctors.map(d => `
+          <option value="${escapeHtml(d.user_id)}">${escapeHtml(d.name)} · ${escapeHtml(d.specialty)} · ${escapeHtml(d.availability_status)}</option>
+        `).join('')
+
+        const doctorMeta = document.querySelector('#appointmentDoctorMeta')
+        doctorSelect.addEventListener('change', () => {
+          const d = doctors.find(item => item.user_id === doctorSelect.value)
+          if (!d) { doctorMeta.textContent = 'Select a doctor to see availability.'; return }
+          doctorMeta.textContent = `${d.specialty} · ${d.availability_status} · ${d.working_days} · ${d.start_time}–${d.end_time} · ${d.facility_name || 'Assigned Facility'}`
+        })
+
+        document.querySelector('#appointmentBookingForm')?.addEventListener('submit', async event => {
+          event.preventDefault()
+          const payload = {
+            patient_id: document.querySelector('#appointmentPatient').value,
+            doctor_user_id: doctorSelect.value,
+            appointment_date: document.querySelector('#appointmentDate').value,
+            appointment_time: document.querySelector('#appointmentTime').value,
+            reason: document.querySelector('#appointmentReason').value.trim()
+          }
+          try {
+            const created = await apiRequest(`/appointments?booked_by=${encodeURIComponent(userId)}&source_role=asha`, {
+              method: 'POST',
+              body: JSON.stringify(payload)
+            })
+            alert(`Appointment booked for ${created.appointment.appointment_date} at ${created.appointment.appointment_time}.`)
+            await refreshStaffAppointmentList()
+          } catch (error) {
+            alert(error.message || 'Unable to book appointment.')
+          }
+        })
+
+        await refreshStaffAppointmentList()
+      } else {
+        const availability = await apiGet(`/doctors/${encodeURIComponent(userId)}/availability`)
+        const a = availability.availability
+        document.querySelector('#doctorAvailabilityStatus').value = a.status || 'Available'
+        document.querySelector('#doctorAvailabilitySpecialty').value = a.specialty || 'General Medicine'
+        document.querySelector('#doctorAvailabilityDays').value = a.working_days || 'Mon,Tue,Wed,Thu,Fri'
+        document.querySelector('#doctorAvailabilityStart').value = a.start_time || '09:00'
+        document.querySelector('#doctorAvailabilityEnd').value = a.end_time || '17:00'
+
+        document.querySelector('#doctorAvailabilityForm')?.addEventListener('submit', async event => {
+          event.preventDefault()
+          try {
+            await apiRequest(`/doctors/${encodeURIComponent(userId)}/availability`, {
+              method: 'PUT',
+              body: JSON.stringify({
+                status: document.querySelector('#doctorAvailabilityStatus').value,
+                specialty: document.querySelector('#doctorAvailabilitySpecialty').value.trim(),
+                working_days: document.querySelector('#doctorAvailabilityDays').value.trim(),
+                start_time: document.querySelector('#doctorAvailabilityStart').value,
+                end_time: document.querySelector('#doctorAvailabilityEnd').value
+              })
+            })
+            document.querySelector('#availabilitySaveMessage').textContent = 'Availability saved.'
+          } catch (error) {
+            document.querySelector('#availabilitySaveMessage').textContent = error.message || 'Unable to save availability.'
+          }
+        })
+        await refreshStaffAppointmentList()
+      }
+    } catch (error) {
+      const target = document.querySelector('#staffAppointmentList, #doctorAppointmentList')
+      if (target) target.innerHTML = `<div class="empty-records">${escapeHtml(error.message || 'Unable to load appointments.')}</div>`
+    }
+  }
+
+  async function refreshStaffAppointmentList() {
+    const target = document.querySelector(isAsha ? '#staffAppointmentList' : '#doctorAppointmentList')
+    if (!target) return
+    try {
+      const data = await apiGet(`/staff/${encodeURIComponent(userId)}/appointments`)
+      const items = data.appointments || []
+      if (!items.length) {
+        target.innerHTML = '<div class="empty-records">No appointments found.</div>'
+        return
+      }
+      target.innerHTML = items.map(item => `
+        <div class="appointment-item">
+          <div class="appointment-item-main">
+            <strong>${escapeHtml(item.patient_name || item.patient_id)}</strong>
+            <span>${escapeHtml(item.patient_id)} · ${escapeHtml(item.doctor_name || item.doctor || 'Doctor')}</span>
+            <small>${escapeHtml(item.appointment_date)} · ${escapeHtml(item.appointment_time)}${item.reason ? ` · ${escapeHtml(item.reason)}` : ''}</small>
+          </div>
+          <div class="appointment-item-side">
+            <span class="appointment-status status-${String(item.status || '').toLowerCase().replaceAll(' ', '-')}">${escapeHtml(item.status || 'Upcoming')}</span>
+            <button type="button" class="secondary-action small-action cancel-appointment-btn" data-appointment-id="${item.id}">Cancel</button>
+          </div>
+        </div>
+      `).join('')
+
+      target.querySelectorAll('.cancel-appointment-btn').forEach(button => {
+        button.addEventListener('click', async () => {
+          if (!confirm('Cancel this appointment?')) return
+          try {
+            await apiRequest(`/appointments/${encodeURIComponent(button.dataset.appointmentId)}?booked_by=${encodeURIComponent(userId)}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ status: 'Cancelled' })
+            })
+            await refreshStaffAppointmentList()
+          } catch (error) {
+            alert(error.message || 'Unable to cancel appointment.')
+          }
+        })
+      })
+    } catch (error) {
+      target.innerHTML = `<div class="empty-records">${escapeHtml(error.message || 'Unable to load appointments.')}</div>`
+    }
+  }
+
   function renderWorkspace() {
 
     const needsReview =
@@ -2645,7 +4427,7 @@ async function renderStaffDashboard(
           <div>
 
             <div class="dashboard-kicker">
-              SIHGPT · SECURE CARE NETWORK
+              DWIT (Don't worry I'm there) · SECURE CARE NETWORK
             </div>
 
             <h1>
@@ -2729,9 +4511,178 @@ async function renderStaffDashboard(
         </div>
 
 
+        <div class="staff-quick-actions">
+          <button type="button" class="secondary-action quick-action" id="openAppointmentsCenterBtn">
+            📅 ${isAsha ? 'Appointments' : 'Appointments & Availability'}
+          </button>
+          ${isAsha ? `
+            <div class="quick-action-note">Book a doctor slot for an authorized patient and track upcoming appointments.</div>
+          ` : `
+            <div class="quick-action-note">Set your availability and manage your appointment queue.</div>
+          `}
+        </div>
+
         <div class="staff-workspace">
+<section class="dashboard-card medicine-inventory-card">
 
+  <div class="card-heading">
+    💊 Medicine Inventory
+  </div>
 
+  <p class="dashboard-description">
+    Real-time medicine availability across your facility.
+  </p>
+
+  ${
+    inventory.length
+      ? `
+        <div class="inventory-grid">
+
+          ${inventory.map(item => {
+
+            const statusClass =
+              item.status === 'Available'
+                ? 'inventory-available'
+                : item.status === 'Low Stock'
+                  ? 'inventory-low'
+                  : 'inventory-out'
+
+            return `
+              <div class="inventory-item">
+
+                <div class="inventory-item-top">
+
+                  <div>
+                    <strong class="inventory-medicine-name">
+                      ${escapeHtml(item.medicine_name)}
+                    </strong>
+
+                    <span class="inventory-category">
+                      ${escapeHtml(item.category || 'General')}
+                    </span>
+                  </div>
+
+                  <span class="inventory-status ${statusClass}">
+                    ${escapeHtml(item.status)}
+                  </span>
+
+                </div>
+
+                <div class="inventory-stock-row">
+
+                  <span>
+                    Stock
+                  </span>
+
+                  <strong>
+                    ${escapeHtml(String(item.stock_quantity))}
+                    ${escapeHtml(item.unit || 'units')}
+                  </strong>
+
+                </div>
+
+                <div class="inventory-stock-row">
+
+                  <span>
+                    Minimum level
+                  </span>
+
+                  <span>
+                    ${escapeHtml(String(item.minimum_stock))}
+                  </span>
+
+                </div>
+
+              </div>
+            `
+          }).join('')}
+
+        </div>
+      `
+      : `
+        <div class="empty-records">
+          No medicine inventory available.
+        </div>
+      `
+  }
+
+</section>
+<section class="dashboard-card diagnostics-availability-card">
+
+  <div class="card-heading">
+    🧪 Diagnostics Availability
+  </div>
+
+  <p class="dashboard-description">
+    Check which diagnostic services are available at your facility.
+  </p>
+
+  ${
+    diagnostics.length
+      ? `
+        <div class="diagnostics-grid">
+
+          ${diagnostics.map(item => {
+
+            const statusClass =
+              item.status === 'Available'
+                ? 'diagnostic-available'
+                : item.status === 'Limited'
+                  ? 'diagnostic-limited'
+                  : 'diagnostic-unavailable'
+
+            return `
+              <div class="diagnostic-item">
+
+                <div class="diagnostic-top">
+
+                  <div>
+                    <strong class="diagnostic-test-name">
+                      ${escapeHtml(
+                        item.test_name ||
+                        'Diagnostic Test'
+                      )}
+                    </strong>
+
+                    <span class="diagnostic-category">
+                      ${escapeHtml(
+                        item.category ||
+                        'General'
+                      )}
+                    </span>
+                  </div>
+
+                  <span class="diagnostic-status ${statusClass}">
+                    ${escapeHtml(
+                      item.status ||
+                      'Unknown'
+                    )}
+                  </span>
+
+                </div>
+
+                <div class="diagnostic-facility">
+                  ${escapeHtml(
+                    item.facility_name ||
+                    facilityName ||
+                    'Assigned Facility'
+                  )}
+                </div>
+
+              </div>
+            `
+          }).join('')}
+
+        </div>
+      `
+      : `
+        <div class="empty-records">
+          No diagnostic availability data found.
+        </div>
+      `
+  }
+
+</section>
           <section
             class="dashboard-card staff-main-card"
           >
@@ -3232,6 +5183,8 @@ async function renderStaffDashboard(
 
     attachPatientButtons()
 
+    document.querySelector('#openAppointmentsCenterBtn')?.addEventListener('click', openAppointmentsCenter)
+
     document
   .querySelector(
     '#registerPatientBtn'
@@ -3521,6 +5474,126 @@ if (writeToNfc) {
   }
 
 
+
+
+/* =========================================================
+   PATIENT WORKSPACE ENHANCEMENT
+   Keeps the existing data/actions but groups them into a
+   focused patient workspace instead of a scattered page.
+========================================================= */
+function enhancePatientWorkspace(isAsha) {
+
+  const page = document.querySelector('.dashboard-page')
+  const recordGrid = page?.querySelector('.patient-record-grid')
+
+  if (!page || !recordGrid || page.dataset.workspaceEnhanced === 'true') {
+    return
+  }
+
+  page.dataset.workspaceEnhanced = 'true'
+
+  const cards = Array.from(recordGrid.children)
+  const profileCard = cards[0] || null
+  const visitsCard = cards[1] || null
+  const timelineCard = cards[2] || null
+
+  const actionCards = Array.from(
+    page.querySelectorAll('.dashboard-card.action-card')
+  )
+
+  const workspace = document.createElement('section')
+  workspace.className = 'patient-workspace'
+
+  const nav = document.createElement('div')
+  nav.className = 'patient-workspace-nav'
+  nav.setAttribute('role', 'tablist')
+  nav.setAttribute('aria-label', 'Patient record sections')
+
+  const panes = new Map()
+
+  function addPane(key, label, nodes) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = 'patient-workspace-tab'
+    button.dataset.tab = key
+    button.setAttribute('role', 'tab')
+    button.textContent = label
+
+    const pane = document.createElement('div')
+    pane.className = 'patient-workspace-pane'
+    pane.dataset.pane = key
+    pane.setAttribute('role', 'tabpanel')
+
+    nodes.filter(Boolean).forEach(node => pane.appendChild(node))
+
+    if (!nodes.some(Boolean)) {
+      const empty = document.createElement('div')
+      empty.className = 'patient-workspace-empty'
+      empty.textContent = 'No information available yet.'
+      pane.appendChild(empty)
+    }
+
+    nav.appendChild(button)
+    workspace.appendChild(pane)
+    panes.set(key, pane)
+  }
+
+  addPane('overview', 'Overview', [profileCard])
+  addPane('visits', 'Visits', [visitsCard])
+  addPane('timeline', 'Journey', [timelineCard])
+  addPane('actions', isAsha ? 'Care Actions' : 'Clinical Review', actionCards)
+
+  recordGrid.replaceWith(workspace)
+
+  const directCards = Array.from(
+    page.querySelectorAll(':scope > .dashboard-card.action-card')
+  )
+  directCards.forEach(card => {
+    if (card.parentElement === page) {
+      card.remove()
+    }
+  })
+
+  workspace.insertBefore(nav, workspace.firstChild)
+
+  function activate(key) {
+    nav.querySelectorAll('.patient-workspace-tab').forEach(button => {
+      const active = button.dataset.tab === key
+      button.classList.toggle('active', active)
+      button.setAttribute('aria-selected', String(active))
+      button.tabIndex = active ? 0 : -1
+    })
+
+    panes.forEach((pane, paneKey) => {
+      pane.classList.toggle('active', paneKey === key)
+    })
+  }
+
+  nav.querySelectorAll('.patient-workspace-tab').forEach(button => {
+    button.addEventListener('click', () => activate(button.dataset.tab))
+  })
+
+  activate('overview')
+
+  // Allow left/right arrow navigation between tabs without changing the
+  // existing desktop/mobile navigation model.
+  nav.addEventListener('keydown', event => {
+    const tabs = Array.from(nav.querySelectorAll('.patient-workspace-tab'))
+    const index = tabs.indexOf(document.activeElement)
+    if (index < 0) return
+
+    let nextIndex = index
+    if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length
+    if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length
+    if (nextIndex !== index) {
+      event.preventDefault()
+      tabs[nextIndex].focus()
+      activate(tabs[nextIndex].dataset.tab)
+    }
+  })
+}
+
+
   function renderPatientView() {
 
     const patient =
@@ -3553,7 +5626,7 @@ if (writeToNfc) {
 
 
             <div class="dashboard-kicker">
-              SIHGPT · AUTHORIZED PATIENT RECORD
+              DWIT (Don't worry I'm there) · AUTHORIZED PATIENT RECORD
             </div>
 
 
@@ -3895,6 +5968,80 @@ if (writeToNfc) {
 
                   </div>
 
+                                    <div class="ai-assessment-panel" id="aiAssessmentPanel">
+
+                    <div class="ai-assessment-header">
+
+                      <div>
+                        <div class="ai-assessment-kicker">
+                          AI-ASSISTED ASSESSMENT
+                        </div>
+
+                        <h3>
+                          Smart Triage
+                        </h3>
+
+                        <p>
+                          Analyze the recorded symptoms and vitals
+                          before saving the visit.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        class="secondary-action"
+                        id="runAIAssessmentBtn"
+                      >
+                        Run AI Assessment
+                      </button>
+
+                    </div>
+
+                    <div
+                      id="aiAssessmentResult"
+                      class="ai-assessment-result"
+                      hidden
+                    >
+
+                      <div class="ai-result-summary">
+
+                        <div class="ai-result-item">
+                          <span>Priority</span>
+                          <strong id="aiPriority">—</strong>
+                        </div>
+
+                        <div class="ai-result-item">
+                          <span>Care Level</span>
+                          <strong id="aiCareLevel">—</strong>
+                        </div>
+
+                        <div class="ai-result-item">
+                          <span>Human Review</span>
+                          <strong id="aiHumanReview">—</strong>
+                        </div>
+
+                      </div>
+
+                      <div class="ai-result-block">
+                        <h4>Why</h4>
+                        <ul id="aiReasons"></ul>
+                      </div>
+
+                      <div class="ai-result-block">
+                        <h4>Next Action</h4>
+                        <p id="aiNextAction">—</p>
+                      </div>
+
+                      <div class="ai-result-disclaimer">
+                        Decision-support only. This assessment does not
+                        provide an autonomous diagnosis or treatment
+                        recommendation.
+                      </div>
+
+                    </div>
+
+                  </div>
+
 
                   <button
                     type="submit"
@@ -4108,6 +6255,7 @@ if (writeToNfc) {
 
     attachLogout()
 
+    enhancePatientWorkspace(isAsha)
 
     document
       .querySelector(
@@ -4127,6 +6275,15 @@ if (writeToNfc) {
         'submit',
         saveVisit
       )
+
+      document
+  .querySelector(
+    '#runAIAssessmentBtn'
+  )
+  ?.addEventListener(
+    'click',
+    runAIAssessment
+  )
 
      document
   .querySelector(
@@ -4180,6 +6337,67 @@ if (writeToNfc) {
         document.querySelector(
           '#doctorDuration'
         )?.value.trim() || ''
+
+    const inventoryMatch =
+      inventory.find(item => {
+        const entered =
+          medicine.toLowerCase().trim()
+
+        const stockName =
+          item.medicine_name
+            .toLowerCase()
+            .trim()
+
+        return (
+          stockName === entered ||
+          stockName.includes(entered) ||
+          entered.includes(stockName)
+        )
+      })
+
+    if (medicine && inventory.length) {
+      if (!inventoryMatch) {
+        const proceed =
+          confirm(
+            `Medicine "${medicine}" is not listed in this facility's inventory.\n\n` +
+            `Do you want to continue with the prescription anyway?`
+          )
+
+        if (!proceed) {
+          return
+        }
+      } else if (
+        inventoryMatch.status ===
+        'Out of Stock'
+      ) {
+        const proceed =
+          confirm(
+            `⚠ ${inventoryMatch.medicine_name} is OUT OF STOCK.\n\n` +
+            `Current stock: 0 ${inventoryMatch.unit}\n\n` +
+            `The prescription can still be recorded.\n` +
+            `Continue?`
+          )
+
+        if (!proceed) {
+          return
+        }
+      } else if (
+        inventoryMatch.status ===
+        'Low Stock'
+      ) {
+        const proceed =
+          confirm(
+            `⚠ ${inventoryMatch.medicine_name} is LOW STOCK.\n\n` +
+            `Current stock: ${inventoryMatch.stock_quantity} ${inventoryMatch.unit}\n` +
+            `Minimum level: ${inventoryMatch.minimum_stock}\n\n` +
+            `Continue with the prescription?`
+          )
+
+        if (!proceed) {
+          return
+        }
+      }
+    }
 
       const followUp =
         document.querySelector(
@@ -4681,7 +6899,158 @@ if (writeToNfc) {
       )
     }
   }
+ 
+  async function runAIAssessment() {
 
+  if (!currentPatient?.patient_id) {
+    alert('No patient selected.')
+    return
+  }
+
+  const button =
+    document.querySelector(
+      '#runAIAssessmentBtn'
+    )
+
+  const resultPanel =
+    document.querySelector(
+      '#aiAssessmentResult'
+    )
+
+  try {
+
+    button.disabled = true
+    button.textContent =
+      'Analyzing...'
+
+    const payload = {
+      patient_id:
+        currentPatient.patient_id,
+
+      symptoms:
+        document.querySelector(
+          '#visitSymptoms'
+        )?.value.trim() || '',
+
+      temperature:
+        document.querySelector(
+          '#visitTemperature'
+        )?.value.trim() || '',
+
+      blood_pressure:
+        document.querySelector(
+          '#visitBP'
+        )?.value.trim() || '',
+
+      pulse:
+        document.querySelector(
+          '#visitPulse'
+        )?.value.trim() || '',
+
+      spo2:
+        document.querySelector(
+          '#visitSpo2'
+        )?.value.trim() || '',
+
+      notes:
+        document.querySelector(
+          '#visitNotes'
+        )?.value.trim() || ''
+    }
+
+    const data =
+      await apiRequest(
+        '/ai/assessment',
+        {
+          method: 'POST',
+
+          body:
+            JSON.stringify(
+              payload
+            )
+        }
+      )
+
+    if (
+      data?.success === false
+    ) {
+      throw new Error(
+        data.message ||
+        data.detail ||
+        'AI assessment failed.'
+      )
+    }
+
+    const assessment =
+      data.assessment
+
+    document.querySelector(
+      '#aiPriority'
+    ).textContent =
+      assessment.priority ||
+      '—'
+
+    document.querySelector(
+      '#aiCareLevel'
+    ).textContent =
+      assessment.care_level ||
+      '—'
+
+    document.querySelector(
+      '#aiHumanReview'
+    ).textContent =
+      assessment.human_review_required
+        ? 'Required'
+        : 'Not required'
+
+    const reasons =
+      document.querySelector(
+        '#aiReasons'
+      )
+
+    reasons.innerHTML =
+      (
+        assessment.explanation ||
+        []
+      )
+        .map(
+          reason =>
+            `<li>${escapeHtml(
+              reason
+            )}</li>`
+        )
+        .join('')
+
+    document.querySelector(
+      '#aiNextAction'
+    ).textContent =
+      assessment.next_action ||
+      '—'
+
+    resultPanel.hidden =
+      false
+
+  } catch (error) {
+
+    console.error(
+      'AI assessment error:',
+      error
+    )
+
+    alert(
+      error.message ||
+      'Unable to run AI assessment.'
+    )
+
+  } finally {
+
+    button.disabled =
+      false
+
+    button.textContent =
+      'Run AI Assessment'
+  }
+}
 
   async function saveVisit(
     event
@@ -5235,7 +7604,7 @@ async function startNfcScan() {
           <div>
 
             <div class="dashboard-kicker">
-              SIHGPT · CARE NETWORK
+            DWIT · CARE NETWORK
             </div>
 
 
@@ -5288,6 +7657,14 @@ async function startNfcScan() {
       await loadReferrals()
 
 
+    inventory =
+  await loadInventory()  
+
+
+  diagnostics =
+  await loadDiagnostics()
+
+
     renderWorkspace()
 
   } catch (error) {
@@ -5306,7 +7683,7 @@ async function startNfcScan() {
           <div>
 
             <div class="dashboard-kicker">
-              SIHGPT · CARE NETWORK
+              DWIT · CARE NETWORK
             </div>
 
 
