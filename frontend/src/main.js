@@ -1,7 +1,7 @@
 import './style.css'
 
 const app = document.querySelector('#app')
-const API_URL = 'http://127.0.0.1:8001'
+const API_URL = 'https://dwit-backend.onrender.com'
 
 // =========================================================
 // OFFLINE / ONLINE STATUS
