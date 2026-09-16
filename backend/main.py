@@ -5230,19 +5230,6 @@ async def nearby_facilities(data: FacilityQueryRequest):
             detail="Nearby facility service is temporarily unavailable."
         )
 
-        with urllib.request.urlopen(request, timeout=30) as response:
-            result = json.loads(response.read().decode("utf-8"))
-
-        return result
-
-    except Exception as e:
-        print("Nearby facility proxy error:", e)
-
-        return {
-            "elements": [],
-            "error": "Nearby facility service temporarily unavailable."
-        }
-
 
 # =========================================================
 # SERVER
