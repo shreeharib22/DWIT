@@ -2182,7 +2182,7 @@ async function loadFacilityFinder() {
           node[
             amenity=hospital
           ](
-            around:10000,
+            around:5000,
             ${latitude},
             ${longitude}
           );
@@ -2190,7 +2190,7 @@ async function loadFacilityFinder() {
           way[
             amenity=hospital
           ](
-            around:10000,
+            around:5000,
             ${latitude},
             ${longitude}
           );
@@ -2198,7 +2198,7 @@ async function loadFacilityFinder() {
           relation[
             amenity=hospital
           ](
-            around:10000,
+            around:5000,
             ${latitude},
             ${longitude}
           );
@@ -2206,7 +2206,7 @@ async function loadFacilityFinder() {
           node[
             amenity=clinic
           ](
-            around:10000,
+            around:5000,
             ${latitude},
             ${longitude}
           );
@@ -2214,7 +2214,7 @@ async function loadFacilityFinder() {
           node[
             amenity=doctors
           ](
-            around:10000,
+            around:5000,
             ${latitude},
             ${longitude}
           );
