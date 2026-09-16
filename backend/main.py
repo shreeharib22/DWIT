@@ -5200,7 +5200,7 @@ async def nearby_facilities(data: FacilityQueryRequest):
     import json
 
     try:
-        overpass_url = "https://overpass-api.de/api/interpreter"
+        overpass_url = "https://overpass.kumi.systems/api/interpreter"
 
         form_data = urllib.parse.urlencode({
             "data": data.query
@@ -5210,9 +5210,24 @@ async def nearby_facilities(data: FacilityQueryRequest):
             overpass_url,
             data=form_data,
             headers={
-                "Content-Type": "application/x-www-form-urlencoded"
+                "Content-Type": "application/x-www-form-urlencoded",
+                "User-Agent": "DWIT-Rural-Healthcare-App/1.0"
             },
             method="POST"
+        )
+
+        with urllib.request.urlopen(request, timeout=45) as response:
+            result = json.loads(
+                response.read().decode("utf-8")
+            )
+
+        return result
+
+    except Exception as e:
+        print("Nearby facility proxy error:", repr(e))
+        raise HTTPException(
+            status_code=502,
+            detail="Nearby facility service is temporarily unavailable."
         )
 
         with urllib.request.urlopen(request, timeout=30) as response:
