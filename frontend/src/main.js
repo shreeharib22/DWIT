@@ -2174,54 +2174,19 @@ async function loadFacilityFinder() {
           Searching nearby healthcare facilities...
         </div>
       `
+const query = `
+  [out:json][timeout:15];
 
-      const query = `
-        [out:json][timeout:25];
+  nwr[
+    amenity~"hospital|clinic|doctors"
+  ](
+    around:3000,
+    ${latitude},
+    ${longitude}
+  );
 
-        (
-          node[
-            amenity=hospital
-          ](
-            around:5000,
-            ${latitude},
-            ${longitude}
-          );
-
-          way[
-            amenity=hospital
-          ](
-            around:5000,
-            ${latitude},
-            ${longitude}
-          );
-
-          relation[
-            amenity=hospital
-          ](
-            around:5000,
-            ${latitude},
-            ${longitude}
-          );
-
-          node[
-            amenity=clinic
-          ](
-            around:5000,
-            ${latitude},
-            ${longitude}
-          );
-
-          node[
-            amenity=doctors
-          ](
-            around:5000,
-            ${latitude},
-            ${longitude}
-          );
-        );
-
-        out center tags;
-      `
+  out center tags;
+`;
 
       fetch(
         'https://dwit-backend.onrender.com/facilities/nearby',
