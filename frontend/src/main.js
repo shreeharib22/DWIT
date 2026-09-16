@@ -2227,14 +2227,12 @@ async function loadFacilityFinder() {
         'https://dwit-backend.onrender.com/facilities/nearby',
         {
           method: 'POST',
-          headers: {
-            'Content-Type':
-              'application/x-www-form-urlencoded'
-          },
-          body:
-            `data=${encodeURIComponent(
-              query
-            )}`
+        headers: {
+  'Content-Type': 'application/json'
+},
+body: JSON.stringify({
+  query: query
+})
         }
       )
         .then(
