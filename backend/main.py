@@ -5185,6 +5185,49 @@ async def patient_timeline(
         ],
     }
 
+# ==========================================
+# NEARBY FACILITY MAP PROXY
+# ==========================================
+
+class FacilityQueryRequest(BaseModel):
+    query: str
+
+
+@app.post("/facilities/nearby")
+async def nearby_facilities(data: FacilityQueryRequest):
+    import urllib.request
+    import urllib.parse
+    import json
+
+    try:
+        overpass_url = "https://overpass-api.de/api/interpreter"
+
+        form_data = urllib.parse.urlencode({
+            "data": data.query
+        }).encode("utf-8")
+
+        request = urllib.request.Request(
+            overpass_url,
+            data=form_data,
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            method="POST"
+        )
+
+        with urllib.request.urlopen(request, timeout=30) as response:
+            result = json.loads(response.read().decode("utf-8"))
+
+        return result
+
+    except Exception as e:
+        print("Nearby facility proxy error:", e)
+
+        return {
+            "elements": [],
+            "error": "Nearby facility service temporarily unavailable."
+        }
+
 
 # =========================================================
 # SERVER

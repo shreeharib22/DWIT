@@ -2224,7 +2224,7 @@ async function loadFacilityFinder() {
       `
 
       fetch(
-        'https://overpass-api.de/api/interpreter',
+        'https://dwit-backend.onrender.com/facilities/nearby',
         {
           method: 'POST',
           headers: {
