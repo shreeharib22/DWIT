@@ -1792,6 +1792,79 @@ function renderVisitTimeline(visits) {
 ========================================================= */
 async function loadFacilityFinder() {
 
+  document
+  .querySelector('#showPatientQR')
+  ?.addEventListener('click', () => {
+
+    const qrValue =
+      `DWIT:${patient.patient_id || patientId}`
+
+    const modal =
+      document.createElement('div')
+
+    modal.className = 'qr-modal'
+
+    modal.innerHTML = `
+      <div class="qr-modal-backdrop"></div>
+
+      <div class="qr-modal-card">
+        <button
+          type="button"
+          class="qr-modal-close"
+        >
+          ×
+        </button>
+
+        <div class="qr-modal-kicker">
+          DWIT · PATIENT ID
+        </div>
+
+        <h2>My DWIT QR</h2>
+
+        <p>
+          Show this QR to an authorized doctor or ASHA worker.
+        </p>
+
+        <div
+          id="patientQrCode"
+          class="patient-qr-code"
+        ></div>
+
+        <strong class="patient-qr-id">
+          ${escapeHtml(patient.patient_id || patientId)}
+        </strong>
+
+        <small>
+          This QR contains only your DWIT patient identifier.
+        </small>
+      </div>
+    `
+
+    document.body.appendChild(modal)
+
+    new QRCode(
+      document.querySelector('#patientQrCode'),
+      {
+        text: qrValue,
+        width: 220,
+        height: 220,
+        correctLevel: QRCode.CorrectLevel.M
+      }
+    )
+
+    const closeModal = () => {
+      modal.remove()
+    }
+
+    document
+      .querySelector('.qr-modal-close')
+      ?.addEventListener('click', closeModal)
+
+    document
+      .querySelector('.qr-modal-backdrop')
+      ?.addEventListener('click', closeModal)
+  })
+
   const mapContainer =
     document.querySelector('#facilityMap')
 
@@ -2534,7 +2607,7 @@ apiGet(
     app.innerHTML = `
       <div class="dashboard-page">
 
-        <div class="dashboard-header">
+       <div class="dashboard-header patient-hero">
           <div>
             <div class="dashboard-kicker">
              DWIT (Don't worry I'm there) · CONNECTED CARE
@@ -2775,6 +2848,24 @@ apiGet(
   </div>
 
 </section>
+
+<div class="patient-qr-card">
+  <div class="patient-qr-info">
+    <h3>My DWIT QR</h3>
+    <p>
+      Show this QR to an authorized doctor or ASHA worker
+      to quickly access your patient record.
+    </p>
+  </div>
+
+  <button
+    class="patient-qr-button"
+    id="showPatientQR"
+    type="button"
+  >
+    Show My QR
+  </button>
+</div>
 <div class="dashboard-grid">
 
           <div class="dashboard-card profile-card">
@@ -3010,6 +3101,91 @@ apiGet(
 
     attachLogout()
 loadFacilityFinder()
+
+document
+  .querySelector('#showPatientQR')
+  ?.addEventListener('click', () => {
+    const qrValue =
+      `DWIT:${patient.patient_id || patientId}`
+
+    const modal =
+      document.createElement('div')
+
+    modal.className = 'qr-modal'
+
+    modal.innerHTML = `
+      <div class="qr-modal-backdrop"></div>
+
+      <div class="qr-modal-card">
+        <button
+          type="button"
+          class="qr-modal-close"
+          aria-label="Close"
+        >
+          ×
+        </button>
+
+        <div class="qr-modal-kicker">
+          DWIT · PATIENT ID
+        </div>
+
+        <h2>My DWIT QR</h2>
+
+        <p>
+          Show this QR to an authorized
+          doctor or ASHA worker.
+        </p>
+
+        <div
+          id="patientQrCode"
+          class="patient-qr-code"
+        ></div>
+
+        <strong class="patient-qr-id">
+          ${escapeHtml(
+            patient.patient_id || patientId
+          )}
+        </strong>
+
+        <small>
+          This QR contains only your DWIT
+          patient identifier.
+        </small>
+      </div>
+    `
+
+    document.body.appendChild(modal)
+
+    new QRCode(
+      document.querySelector('#patientQrCode'),
+      {
+        text: qrValue,
+        width: 220,
+        height: 220,
+        correctLevel:
+          QRCode.CorrectLevel.M
+      }
+    )
+
+    const closeModal = () => {
+      modal.remove()
+    }
+
+    modal
+      .querySelector('.qr-modal-close')
+      ?.addEventListener(
+        'click',
+        closeModal
+      )
+
+    modal
+      .querySelector('.qr-modal-backdrop')
+      ?.addEventListener(
+        'click',
+        closeModal
+      )
+  })
+
 
     // =====================================================
     // PATIENT VOICE SYMPTOM ASSISTANT
@@ -4363,6 +4539,163 @@ let diagnostics = []
 
   function renderWorkspace() {
 
+    async function startQrScanner() {
+  if (typeof Html5Qrcode === 'undefined') {
+    alert('QR scanner is unavailable. Please refresh the page.')
+    return
+  }
+
+  const modal = document.createElement('div')
+
+  modal.className = 'qr-scanner-modal'
+
+  modal.innerHTML = `
+    <div class="qr-scanner-backdrop"></div>
+
+    <div class="qr-scanner-card">
+
+      <button
+        type="button"
+        class="qr-scanner-close"
+        id="closeQrScanner"
+        aria-label="Close QR scanner"
+      >
+        ×
+      </button>
+
+      <div class="qr-modal-kicker">
+        DWIT · PATIENT IDENTIFICATION
+      </div>
+
+      <h2>Scan Patient QR</h2>
+
+      <p>
+        Point the camera at the patient's DWIT QR code.
+      </p>
+
+      <div
+        id="qr-reader"
+        class="qr-reader"
+      ></div>
+
+      <div
+        id="qr-scan-status"
+        class="qr-scan-status"
+      >
+        Waiting for camera...
+      </div>
+
+    </div>
+  `
+
+  document.body.appendChild(modal)
+
+  const scanner = new Html5Qrcode('qr-reader')
+
+  let closed = false
+
+  const cleanup = async () => {
+    if (closed) return
+
+    closed = true
+
+    try {
+      await scanner.stop()
+    } catch {}
+
+    try {
+      await scanner.clear()
+    } catch {}
+
+    modal.remove()
+  }
+
+  document
+    .querySelector('#closeQrScanner')
+    ?.addEventListener('click', cleanup)
+
+  document
+    .querySelector('.qr-scanner-backdrop')
+    ?.addEventListener('click', cleanup)
+
+  const status =
+    document.querySelector('#qr-scan-status')
+
+  try {
+    await scanner.start(
+      {
+        facingMode: 'environment'
+      },
+      {
+        fps: 10,
+        qrbox: {
+          width: 250,
+          height: 250
+        }
+      },
+      async decodedText => {
+
+        const value =
+          String(decodedText || '').trim()
+
+        if (!value.startsWith('DWIT:')) {
+          if (status) {
+            status.textContent =
+              'Invalid DWIT QR code.'
+          }
+
+          return
+        }
+
+        const patientId =
+          value.slice(5).trim()
+
+        if (!patientId) {
+          if (status) {
+            status.textContent =
+              'Patient ID not found in QR code.'
+          }
+
+          return
+        }
+
+        if (status) {
+          status.textContent =
+            `Patient found: ${patientId}`
+        }
+
+        try {
+          await scanner.stop()
+        } catch {}
+
+        try {
+          await scanner.clear()
+        } catch {}
+
+        modal.remove()
+
+        await openPatient(patientId)
+      },
+      () => {
+        // Camera is scanning.
+      }
+    )
+
+    if (status) {
+      status.textContent =
+        'Camera ready — point it at the patient QR.'
+    }
+
+  } catch (error) {
+    console.error('QR scanner error:', error)
+
+    if (status) {
+      status.textContent =
+        'Unable to access camera. Please allow camera permission.'
+    }
+  }
+}
+
     const needsReview =
       patients.filter(
         patient =>
@@ -4712,6 +5045,40 @@ let diagnostics = []
                 : ''
             }
 
+            <div class="qr-scan-panel">
+
+  <div class="qr-scan-icon">
+    ▣
+  </div>
+
+  <div class="qr-scan-copy">
+    <div class="card-kicker">
+      QUICK IDENTIFICATION
+    </div>
+
+    <h3>
+      QR Patient Identification
+    </h3>
+
+    <p>
+      Scan the patient's DWIT QR code using this device's camera.
+    </p>
+  </div>
+
+  <button
+    type="button"
+    class="primary-action"
+    id="scanQrBtn"
+  >
+    Scan Patient QR
+  </button>
+
+</div>
+
+<div class="search-divider">
+  <span>OR</span>
+</div>
+
 <div class="register-patient-panel">
 
   <div class="register-patient-copy">
@@ -4910,7 +5277,7 @@ let diagnostics = []
                       </strong>
 
                       <span>
-                        Identify patient using NFC or Patient ID.
+                        Identify patient using NFC, QR or Patient ID.
                       </span>
 
                     </div>
@@ -5150,6 +5517,14 @@ let diagnostics = []
         startNfcScan
       )
 
+      document
+  .querySelector(
+    '#scanQrBtn'
+  )
+  ?.addEventListener(
+    'click',
+    startQrScanner
+  )
 
     attachPatientButtons()
 

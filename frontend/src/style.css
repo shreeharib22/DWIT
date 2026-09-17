@@ -4314,3 +4314,396 @@ textarea.form-control {
   }
 
 }
+
+/* =========================================================
+   DWIT PATIENT PORTAL — UI POLISH
+========================================================= */
+
+.patient-portal {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.patient-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 28px;
+  border-radius: 24px;
+  background: linear-gradient(
+    135deg,
+    #111827,
+    #1f2937
+  );
+  color: #fff;
+  margin-bottom: 24px;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.12);
+}
+
+.patient-hero::after {
+  content: "";
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  right: -70px;
+  top: -90px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.patient-hero-content {
+  position: relative;
+  z-index: 2;
+}
+
+.patient-hero .dashboard-kicker {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.patient-hero h1 {
+  margin: 6px 0;
+  font-size: clamp(28px, 4vw, 42px);
+}
+
+.patient-hero p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.patient-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.patient-action-card {
+  padding: 20px;
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+}
+
+.patient-action-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 18px;
+}
+
+.patient-action-card span {
+  display: block;
+  margin-top: 5px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.patient-qr-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px;
+  border-radius: 22px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.patient-qr-info h3 {
+  margin: 0 0 6px;
+}
+
+.patient-qr-info p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.patient-qr-button {
+  border: 0;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: #111827;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.patient-qr-button:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .patient-quick-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .patient-qr-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .patient-hero {
+    padding: 22px;
+    border-radius: 20px;
+  }
+}
+
+/* =========================================================
+   DWIT PATIENT QR MODAL
+========================================================= */
+
+.qr-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.qr-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.qr-modal-card {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 390px);
+  padding: 30px;
+  text-align: center;
+  border-radius: 26px;
+  background: #ffffff;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25);
+  animation: qrModalIn 0.2s ease-out;
+}
+
+.qr-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #0f172a;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.qr-modal-kicker {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #64748b;
+}
+
+.qr-modal-card h2 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.qr-modal-card p {
+  margin: 8px 0 20px;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.patient-qr-code {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 240px;
+  min-height: 240px;
+  margin: 0 auto 16px;
+  padding: 10px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.patient-qr-code img,
+.patient-qr-code canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.patient-qr-id {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 18px;
+}
+
+.qr-modal-card small {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+@keyframes qrModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 480px) {
+  .qr-modal-card {
+    padding: 24px 18px;
+  }
+
+  .patient-qr-code {
+    width: 210px;
+    min-height: 210px;
+  }
+}
+
+/* =========================================================
+   DWIT QR PATIENT SCANNER
+========================================================= */
+
+.qr-scan-panel {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 18px;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #f8fafc, #ffffff);
+}
+
+.qr-scan-icon {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.qr-scan-copy {
+  flex: 1;
+}
+
+.qr-scan-copy h3 {
+  margin: 3px 0 5px;
+  font-size: 18px;
+}
+
+.qr-scan-copy p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.qr-scanner-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.qr-scanner-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(7px);
+}
+
+.qr-scanner-card {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 440px);
+  padding: 28px;
+  border-radius: 26px;
+  background: #ffffff;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+}
+
+.qr-scanner-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #0f172a;
+  font-size: 25px;
+  cursor: pointer;
+}
+
+.qr-scanner-card h2 {
+  margin: 4px 0 6px;
+  font-size: 27px;
+}
+
+.qr-scanner-card p {
+  margin: 0 0 18px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.qr-reader {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #0f172a;
+}
+
+.qr-reader video {
+  width: 100% !important;
+  height: auto !important;
+  border-radius: 18px;
+}
+
+.qr-scan-status {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 13px;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .qr-scan-panel {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .qr-scan-icon {
+    align-self: flex-start;
+  }
+
+  .qr-scanner-card {
+    padding: 22px 16px;
+    border-radius: 22px;
+  }
+}
