@@ -5199,36 +5199,53 @@ async def nearby_facilities(data: FacilityQueryRequest):
     import urllib.parse
     import json
 
-    try:
-        overpass_url = "https://overpass.kumi.systems/api/interpreter"
+    servers = [
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter"
+    ]
 
-        form_data = urllib.parse.urlencode({
-            "data": data.query
-        }).encode("utf-8")
+    last_error = None
 
-        request = urllib.request.Request(
-            overpass_url,
-            data=form_data,
-            headers={
-                "Content-Type": "application/x-www-form-urlencoded",
-                "User-Agent": "DWIT-Rural-Healthcare-App/1.0"
-            },
-            method="POST"
-        )
+    for overpass_url in servers:
+        try:
+            form_data = urllib.parse.urlencode({
+                "data": data.query
+            }).encode("utf-8")
 
-        with urllib.request.urlopen(request, timeout=45) as response:
-            result = json.loads(
-                response.read().decode("utf-8")
+            request = urllib.request.Request(
+                overpass_url,
+                data=form_data,
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "User-Agent": "DWIT-Rural-Healthcare-App/1.0"
+                },
+                method="POST"
             )
 
-        return result
+            with urllib.request.urlopen(
+                request,
+                timeout=15
+            ) as response:
 
-    except Exception as e:
-        print("Nearby facility proxy error:", repr(e))
-        raise HTTPException(
-            status_code=502,
-            detail="Nearby facility service is temporarily unavailable."
-        )
+                result = json.loads(
+                    response.read().decode("utf-8")
+                )
+
+                return result
+
+        except Exception as e:
+            last_error = repr(e)
+            print(
+                f"Facility server failed: "
+                f"{overpass_url} -> {last_error}"
+            )
+
+    print("All facility servers failed:", last_error)
+
+    raise HTTPException(
+        status_code=502,
+        detail="Nearby facility service is temporarily unavailable."
+    )
 
 
 # =========================================================
