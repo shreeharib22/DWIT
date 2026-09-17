@@ -2849,22 +2849,21 @@ apiGet(
 
 </section>
 
-<div class="patient-qr-card">
-  <div class="patient-qr-info">
-    <h3>My DWIT QR</h3>
-    <p>
-      Show this QR to an authorized doctor or ASHA worker
-      to quickly access your patient record.
-    </p>
+<div class="patient-qr-bar">
+
+  <div>
+    <strong>Patient QR</strong>
+    <span>Use this to share your patient ID securely.</span>
   </div>
 
   <button
+    type="button"
     class="patient-qr-button"
     id="showPatientQR"
-    type="button"
   >
-    Show My QR
+    Show QR
   </button>
+
 </div>
 <div class="dashboard-grid">
 
@@ -2917,7 +2916,10 @@ apiGet(
 
             </div>
           </div>
-
+<div class="patient-section-title">
+  <span>CARE & APPOINTMENTS</span>
+  <h2>Your visits and upcoming care</h2>
+</div>
           <div class="dashboard-card">
             <div class="card-heading">
               Book a Doctor Appointment
@@ -3055,7 +3057,12 @@ apiGet(
   ></div>
 
 </section>
-          <div class="dashboard-card">
+
+<div class="patient-section-title">
+  <span>HEALTH RECORDS</span>
+  <h2>Your health information</h2>
+</div>
+         <div class="dashboard-card patient-record-card">
 
             <div class="card-heading">
               Prescriptions
@@ -3068,7 +3075,7 @@ apiGet(
 
           </div>
 
-          <div class="dashboard-card">
+         <div class="dashboard-card patient-record-card">
 
             <div class="card-heading">
               Lab Reports
@@ -3081,7 +3088,7 @@ apiGet(
 
           </div>
 
-          <div class="dashboard-card">
+          <div class="dashboard-card patient-record-card">
 
             <div class="card-heading">
               Referrals
