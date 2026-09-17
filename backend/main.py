@@ -5198,55 +5198,115 @@ async def nearby_facilities(data: FacilityQueryRequest):
     import urllib.request
     import urllib.parse
     import json
+    import re
 
-    servers = [
-         "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
-    "https://overpass.private.coffee/api/interpreter"
-    ]
+    try:
+        # Extract latitude and longitude from the frontend query
+        match = re.search(
+            r"around:\d+,\s*([-0-9.]+),\s*([-0-9.]+)",
+            data.query
+        )
 
-    last_error = None
+        if not match:
+            raise HTTPException(
+                status_code=400,
+                detail="Location coordinates not found."
+            )
 
-    for overpass_url in servers:
-        try:
-            form_data = urllib.parse.urlencode({
-                "data": data.query
-            }).encode("utf-8")
+        latitude = float(match.group(1))
+        longitude = float(match.group(2))
+
+        # Search a small area around the user's location
+        delta = 0.04
+
+        south = latitude - delta
+        north = latitude + delta
+        west = longitude - delta
+        east = longitude + delta
+
+        facilities = []
+
+        for category in ["hospital", "clinic", "doctors"]:
+            params = urllib.parse.urlencode({
+                "q": category,
+                "format": "jsonv2",
+                "limit": "10",
+                "viewbox": f"{west},{north},{east},{south}",
+                "bounded": "1",
+                "addressdetails": "1"
+            })
+
+            url = (
+                "https://nominatim.openstreetmap.org/search?"
+                + params
+            )
 
             request = urllib.request.Request(
-                overpass_url,
-                data=form_data,
+                url,
                 headers={
-                    "Content-Type": "application/x-www-form-urlencoded",
                     "User-Agent": "DWIT-Rural-Healthcare-App/1.0"
-                },
-                method="POST"
+                }
             )
 
             with urllib.request.urlopen(
                 request,
                 timeout=15
             ) as response:
-
-                result = json.loads(
+                places = json.loads(
                     response.read().decode("utf-8")
                 )
 
-                return result
+            facilities.extend(places)
 
-        except Exception as e:
-            last_error = repr(e)
-            print(
-                f"Facility server failed: "
-                f"{overpass_url} -> {last_error}"
-            )
+        elements = []
 
-    print("All facility servers failed:", last_error)
+        seen = set()
 
-    raise HTTPException(
-        status_code=502,
-        detail="Nearby facility service is temporarily unavailable."
-    )
+        for place in facilities:
+            place_id = place.get("place_id")
 
+            if place_id in seen:
+                continue
+
+            seen.add(place_id)
+
+            elements.append({
+                "type": "node",
+                "lat": float(place["lat"]),
+                "lon": float(place["lon"]),
+                "tags": {
+                    "name": place.get(
+                        "name",
+                        "Healthcare Facility"
+                    ),
+                    "amenity": place.get(
+                        "type",
+                        "clinic"
+                    ),
+                    "display_name": place.get(
+                        "display_name",
+                        ""
+                    )
+                }
+            })
+
+        return {
+            "elements": elements
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        print(
+            "Nearby facility proxy error:",
+            repr(e)
+        )
+
+        raise HTTPException(
+            status_code=502,
+            detail="Nearby facility service is temporarily unavailable."
+        )
 
 # =========================================================
 # SERVER
