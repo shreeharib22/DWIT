@@ -2174,15 +2174,22 @@ async function loadFacilityFinder() {
           Searching nearby healthcare facilities...
         </div>
       `
-const query = `
-  [out:json][timeout:15];
+const delta = 0.035;
 
-  nwr[
-    amenity~"hospital|clinic|doctors"
-  ](
-    around:3000,
-    ${latitude},
-    ${longitude}
+const south = latitude - delta;
+const north = latitude + delta;
+const west = longitude - delta;
+const east = longitude + delta;
+
+const query = `
+  [out:json][timeout:25];
+
+  (
+    node["amenity"="hospital"](${south},${west},${north},${east});
+    way["amenity"="hospital"](${south},${west},${north},${east});
+    node["amenity"="clinic"](${south},${west},${north},${east});
+    way["amenity"="clinic"](${south},${west},${north},${east});
+    node["amenity"="doctors"](${south},${west},${north},${east});
   );
 
   out center tags;
