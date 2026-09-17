@@ -5200,8 +5200,8 @@ async def nearby_facilities(data: FacilityQueryRequest):
     import json
 
     servers = [
-        "https://overpass-api.de/api/interpreter",
-        "https://overpass.kumi.systems/api/interpreter"
+         "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter"
     ]
 
     last_error = None
