@@ -5201,9 +5201,8 @@ async def nearby_facilities(data: FacilityQueryRequest):
     import re
 
     try:
-        # Extract latitude and longitude from the frontend query
         match = re.search(
-            r"around:\d+,\s*([-0-9.]+),\s*([-0-9.]+)",
+            r"\(\s*([-0-9.]+)\s*,\s*([-0-9.]+)\s*,\s*([-0-9.]+)\s*,\s*([-0-9.]+)\s*\)",
             data.query
         )
 
@@ -5213,16 +5212,10 @@ async def nearby_facilities(data: FacilityQueryRequest):
                 detail="Location coordinates not found."
             )
 
-        latitude = float(match.group(1))
-        longitude = float(match.group(2))
-
-        # Search a small area around the user's location
-        delta = 0.04
-
-        south = latitude - delta
-        north = latitude + delta
-        west = longitude - delta
-        east = longitude + delta
+        south = float(match.group(1))
+        west = float(match.group(2))
+        north = float(match.group(3))
+        east = float(match.group(4))
 
         facilities = []
 
@@ -5259,7 +5252,6 @@ async def nearby_facilities(data: FacilityQueryRequest):
             facilities.extend(places)
 
         elements = []
-
         seen = set()
 
         for place in facilities:
