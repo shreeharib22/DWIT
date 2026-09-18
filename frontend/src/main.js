@@ -3212,9 +3212,7 @@ if (
   appointmentSpeech.continuous = false
   appointmentSpeech.interimResults = true
 
-  appointmentSpeech.lang =
-    speechLanguageMap[selectedLanguage] ||
-    'en-IN'
+ appointmentSpeech.lang = 'en-IN'
 
   appointmentSpeech.onstart = () => {
 
