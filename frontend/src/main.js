@@ -2920,6 +2920,52 @@ apiGet(
   <span>CARE & APPOINTMENTS</span>
   <h2>Your visits and upcoming care</h2>
 </div>
+
+<section class="dashboard-card ai-appointment-card">
+
+  <div class="card-heading">
+    <div>
+      <div class="card-kicker">
+        DWIT AI · CARE COORDINATOR
+      </div>
+
+      <h2>
+        🤖 Manage My Appointment
+      </h2>
+
+      <p>
+        Tell DWIT what you need. Book, reschedule, cancel,
+        or check your appointments using natural language.
+      </p>
+    </div>
+  </div>
+
+  <div class="ai-appointment-input-row">
+
+    <textarea
+      id="aiAppointmentMessage"
+      rows="3"
+      placeholder="Example: Book me with a doctor tomorrow morning"
+    ></textarea>
+
+    <button
+      type="button"
+      class="primary-action"
+      id="aiAppointmentBtn"
+    >
+      Ask DWIT
+    </button>
+
+  </div>
+
+  <div
+    id="aiAppointmentResult"
+    class="ai-appointment-result"
+    hidden
+  ></div>
+
+</section>
+
           <div class="dashboard-card">
             <div class="card-heading">
               Book a Doctor Appointment
@@ -3108,6 +3154,339 @@ apiGet(
 
     attachLogout()
 loadFacilityFinder()
+
+    // =====================================================
+    // AI APPOINTMENT ASSISTANT
+    // =====================================================
+
+    const aiAppointmentButton =
+      document.querySelector(
+        '#aiAppointmentBtn'
+      )
+
+    const aiAppointmentMessage =
+      document.querySelector(
+        '#aiAppointmentMessage'
+      )
+
+    const aiAppointmentResult =
+      document.querySelector(
+        '#aiAppointmentResult'
+      )
+
+    aiAppointmentButton?.addEventListener(
+      'click',
+      async () => {
+
+        const message =
+          aiAppointmentMessage?.value.trim()
+
+        if (!message) {
+          return
+        }
+
+        aiAppointmentButton.disabled = true
+        aiAppointmentButton.textContent =
+          'Understanding...'
+
+        if (aiAppointmentResult) {
+          aiAppointmentResult.hidden = false
+          aiAppointmentResult.innerHTML = `
+            <div class="appointment-ai-loading">
+              🤖 DWIT is understanding your request...
+            </div>
+          `
+        }
+
+        try {
+
+          const data =
+            await apiRequest(
+              '/ai/appointment-assistant',
+              {
+                method: 'POST',
+                body: JSON.stringify({
+                  patient_id: patientId,
+                  message: message
+                })
+              }
+            )
+
+          if (!data.success) {
+            throw new Error(
+              data.message ||
+              'Unable to process your appointment request.'
+            )
+          }
+
+          const assistant =
+            data.assistant || {}
+
+          const intent =
+            assistant.intent || 'unknown'
+
+          const doctor =
+            assistant.doctor_name ||
+            ''
+
+          const date =
+            assistant.date ||
+            ''
+
+          const time =
+            assistant.time ||
+            ''
+
+          const preference =
+            assistant.time_preference ||
+            ''
+if (aiAppointmentResult) {
+
+  aiAppointmentResult.innerHTML = `
+    <div class="appointment-ai-understood">
+
+      <div class="appointment-ai-label">
+        DWIT UNDERSTOOD
+      </div>
+
+      <h3>
+        ${escapeHtml(
+          intent
+            .replace(
+              /^./,
+              letter => letter.toUpperCase()
+            )
+        )}
+      </h3>
+
+      ${
+        doctor
+          ? `
+            <p>
+              <strong>Doctor:</strong>
+              ${escapeHtml(doctor)}
+            </p>
+          `
+          : ''
+      }
+
+      ${
+        date
+          ? `
+            <p>
+              <strong>Date:</strong>
+              ${escapeHtml(date)}
+            </p>
+          `
+          : ''
+      }
+
+      ${
+        time
+          ? `
+            <p>
+              <strong>Time:</strong>
+              ${escapeHtml(time)}
+            </p>
+          `
+          : ''
+      }
+
+      ${
+        preference
+          ? `
+            <p>
+              <strong>Preference:</strong>
+              ${escapeHtml(preference)}
+            </p>
+          `
+          : ''
+      }
+
+      ${
+        intent === 'book' &&
+        date &&
+        time &&
+        assistant.doctor_user_id
+          ? `
+            <button
+              type="button"
+              class="primary-action"
+              id="confirmAiAppointmentBtn"
+            >
+              Confirm & Book
+            </button>
+          `
+          : ''
+      }
+
+      ${
+        intent === 'reschedule' &&
+        assistant.appointment_id &&
+        date &&
+        time
+          ? `
+            <button
+              type="button"
+              class="primary-action"
+              id="confirmAiAppointmentBtn"
+            >
+              Confirm & Reschedule
+            </button>
+          `
+          : ''
+      }
+
+      ${
+        intent === 'cancel' &&
+        assistant.appointment_id
+          ? `
+            <button
+              type="button"
+              class="primary-action"
+              id="confirmAiAppointmentBtn"
+            >
+              Confirm Cancellation
+            </button>
+          `
+          : ''
+      }
+
+      ${
+        assistant.needs_confirmation &&
+        !(
+          (intent === 'book' &&
+            date &&
+            time &&
+            assistant.doctor_user_id) ||
+          (intent === 'reschedule' &&
+            assistant.appointment_id &&
+            date &&
+            time) ||
+          (intent === 'cancel' &&
+            assistant.appointment_id)
+        )
+          ? `
+            <p class="appointment-ai-next">
+              I need a specific available slot before I can make the change.
+            </p>
+          `
+          : ''
+      }
+
+    </div>
+  `
+
+  document
+    .querySelector('#confirmAiAppointmentBtn')
+    ?.addEventListener(
+      'click',
+      async () => {
+
+        const confirmButton =
+          document.querySelector(
+            '#confirmAiAppointmentBtn'
+          )
+
+        confirmButton.disabled = true
+        confirmButton.textContent =
+          'Processing...'
+
+        try {
+
+          const actionData = {
+            intent,
+            doctor_user_id:
+              assistant.doctor_user_id || null,
+            date:
+              date || null,
+            time:
+              time || null,
+            appointment_id:
+              assistant.appointment_id || null,
+            reason:
+              assistant.reason || ''
+          }
+
+          const result =
+            await apiRequest(
+              '/ai/appointment-assistant',
+              {
+                method: 'POST',
+                body: JSON.stringify({
+                  patient_id: patientId,
+                  message: 'Confirmed',
+                  confirm: true,
+                  action: actionData
+                })
+              }
+            )
+
+          if (!result.success) {
+            throw new Error(
+              result.message ||
+              'Unable to complete the appointment.'
+            )
+          }
+
+          if (aiAppointmentResult) {
+            aiAppointmentResult.innerHTML = `
+              <div class="appointment-ai-success">
+                ✅ Appointment action completed successfully.
+              </div>
+            `
+          }
+
+          setTimeout(
+            () => renderPatientDashboard(patientId),
+            700
+          )
+
+        } catch (error) {
+
+          console.error(
+            'AI appointment action error:',
+            error
+          )
+
+          if (aiAppointmentResult) {
+            aiAppointmentResult.innerHTML = `
+              <div class="appointment-ai-error">
+                ${escapeHtml(
+                  error.message ||
+                  'Unable to complete the appointment.'
+                )}
+              </div>
+            `
+          }
+
+        }
+      }
+    )
+}
+
+          if (aiAppointmentResult) {
+            aiAppointmentResult.hidden = false
+            aiAppointmentResult.innerHTML = `
+              <div class="appointment-ai-error">
+                ${escapeHtml(
+                  error.message ||
+                  'Unable to process your request.'
+                )}
+              </div>
+            `
+          }
+
+        } finally {
+
+          aiAppointmentButton.disabled = false
+          aiAppointmentButton.textContent =
+            'Ask DWIT'
+
+        }
+      }
+    )
+
 
 document
   .querySelector('#showPatientQR')

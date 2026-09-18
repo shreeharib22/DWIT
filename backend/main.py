@@ -1160,6 +1160,12 @@ class AppointmentUpdate(BaseModel):
     status: Optional[str] = None
     reason: Optional[str] = None
 
+class AppointmentAssistantRequest(BaseModel):
+    patient_id: str
+    message: str
+    confirm: bool = False
+    action: Optional[dict] = None
+
 
 class DoctorAvailabilityUpdate(BaseModel):
     status: str = "Available"
@@ -3191,6 +3197,374 @@ async def get_appointments(
         ],
     }
 
+# =========================================================
+# AI APPOINTMENT ASSISTANT
+# =========================================================
+
+@app.post("/ai/appointment-assistant")
+async def ai_appointment_assistant(
+    data: AppointmentAssistantRequest
+):
+    db = get_db()
+
+    patient = get_patient(
+        db,
+        data.patient_id
+    )
+
+    if not patient:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found"
+        )
+
+    appointments = db.execute(
+        """
+        SELECT
+            a.*,
+            u.name AS doctor_name,
+            u.user_id AS doctor_user_id,
+            f.name AS facility_name
+        FROM appointments a
+        LEFT JOIN users u
+            ON u.user_id = a.doctor_user_id
+        LEFT JOIN facilities f
+            ON f.id = a.facility_id
+        WHERE a.patient_id = ?
+        ORDER BY a.appointment_date ASC,
+                 a.appointment_time ASC
+        """,
+        (data.patient_id,)
+    ).fetchall()
+
+    doctors = db.execute(
+        """
+        SELECT
+            u.user_id,
+            u.name,
+            u.facility_id,
+            f.name AS facility_name,
+            COALESCE(
+                da.status,
+                'Available'
+            ) AS availability_status,
+            COALESCE(
+                da.specialty,
+                'General Medicine'
+            ) AS specialty,
+            COALESCE(
+                da.working_days,
+                'Mon,Tue,Wed,Thu,Fri'
+            ) AS working_days,
+            COALESCE(
+                da.start_time,
+                '09:00'
+            ) AS start_time,
+            COALESCE(
+                da.end_time,
+                '17:00'
+            ) AS end_time
+        FROM users u
+        LEFT JOIN facilities f
+            ON f.id = u.facility_id
+        LEFT JOIN doctor_availability da
+            ON da.doctor_user_id = u.user_id
+        WHERE u.role = 'doctor'
+          AND u.active = 1
+        ORDER BY u.name
+        """
+    ).fetchall()
+
+    patient_appointments = [
+        dict(item)
+        for item in appointments
+    ]
+
+    doctor_list = [
+        dict(item)
+        for item in doctors
+    ]
+
+
+    # =====================================================
+    # CONFIRMED APPOINTMENT ACTION
+    # =====================================================
+
+    if data.confirm and data.action:
+
+        action = data.action
+        intent = action.get("intent")
+
+        try:
+
+            if intent == "book":
+
+                doctor_user_id = action.get(
+                    "doctor_user_id"
+                )
+                appointment_date = action.get(
+                    "date"
+                )
+                appointment_time = action.get(
+                    "time"
+                )
+                reason = action.get(
+                    "reason",
+                    ""
+                )
+
+                if not all([
+                    doctor_user_id,
+                    appointment_date,
+                    appointment_time
+                ]):
+                    db.close()
+
+                    return {
+                        "success": False,
+                        "message":
+                            "Doctor, date and time are required."
+                    }
+
+                created = await create_appointment(
+                    AppointmentCreate(
+                        patient_id=data.patient_id,
+                        doctor_user_id=doctor_user_id,
+                        appointment_date=appointment_date,
+                        appointment_time=appointment_time,
+                        reason=reason or ""
+                    ),
+                    booked_by=data.patient_id,
+                    source_role="patient"
+                )
+
+                db.close()
+
+                return {
+                    "success": True,
+                    "action": "booked",
+                    "appointment":
+                        created["appointment"]
+                }
+
+            if intent == "reschedule":
+
+                appointment_id = action.get(
+                    "appointment_id"
+                )
+                new_date = action.get(
+                    "date"
+                )
+                new_time = action.get(
+                    "time"
+                )
+
+                if not appointment_id:
+                    db.close()
+
+                    return {
+                        "success": False,
+                        "message":
+                            "Please specify which appointment to reschedule."
+                    }
+
+                updated = await update_appointment(
+                    appointment_id=int(
+                        appointment_id
+                    ),
+                    booked_by=data.patient_id,
+                    data=AppointmentUpdate(
+                        appointment_date=new_date,
+                        appointment_time=new_time
+                    )
+                )
+
+                db.close()
+
+                return {
+                    "success": True,
+                    "action": "rescheduled",
+                    "appointment":
+                        updated["appointment"]
+                }
+
+            if intent == "cancel":
+
+                appointment_id = action.get(
+                    "appointment_id"
+                )
+
+                if not appointment_id:
+                    db.close()
+
+                    return {
+                        "success": False,
+                        "message":
+                            "Please specify which appointment to cancel."
+                    }
+
+                updated = await update_appointment(
+                    appointment_id=int(
+                        appointment_id
+                    ),
+                    booked_by=data.patient_id,
+                    data=AppointmentUpdate(
+                        status="Cancelled"
+                    )
+                )
+
+                db.close()
+
+                return {
+                    "success": True,
+                    "action": "cancelled",
+                    "appointment":
+                        updated["appointment"]
+                }
+
+        except HTTPException:
+            db.close()
+            raise
+
+        except Exception as error:
+
+            print(
+                "AI appointment action error:",
+                error
+            )
+
+            db.close()
+
+            return {
+                "success": False,
+                "message":
+                    "Unable to complete the appointment action."
+            }
+
+
+    api_key = os.getenv("GEMINI_API_KEY")
+
+    if not api_key:
+        db.close()
+
+        return {
+            "success": False,
+            "message": "AI appointment assistant is unavailable."
+        }
+
+    import json
+
+    today = datetime.now().date().isoformat()
+
+    prompt = f"""
+You are DWIT's AI appointment coordinator.
+
+Today is {today}.
+
+Your job is ONLY to understand the patient's
+appointment request.
+
+Possible intents:
+- book
+- reschedule
+- cancel
+- view
+- availability
+- unknown
+
+The patient may use natural language such as:
+"book me tomorrow morning"
+"move my appointment to Monday"
+"cancel my appointment"
+"when is my next appointment?"
+"which doctor is available tomorrow?"
+
+Do NOT invent doctors, dates or times.
+
+Use the supplied doctor and appointment data.
+
+Return ONLY valid JSON:
+
+{{
+  "intent": "book | reschedule | cancel | view | availability | unknown",
+  "doctor_user_id": null,
+  "doctor_name": null,
+  "date": null,
+  "time": null,
+  "time_preference": null,
+  "appointment_id": null,
+  "reason": "",
+  "confidence": 0.0,
+  "needs_confirmation": true
+}}
+
+Rules:
+
+1. Convert relative dates such as tomorrow or Monday
+   into an actual YYYY-MM-DD date when possible.
+
+2. If the patient says morning, afternoon or evening,
+   put that in time_preference.
+
+3. Do not choose a time slot unless the data supports it.
+
+4. For rescheduling, identify the patient's relevant
+   existing appointment when possible.
+
+5. Booking, rescheduling and cancellation must require
+   patient confirmation before execution.
+
+PATIENT:
+{json.dumps(dict(patient), default=str)}
+
+CURRENT APPOINTMENTS:
+{json.dumps(patient_appointments, default=str)}
+
+DOCTORS:
+{json.dumps(doctor_list, default=str)}
+
+PATIENT REQUEST:
+{data.message}
+"""
+
+    try:
+        client = genai.Client(
+            api_key=api_key
+        )
+
+        response = client.models.generate_content(
+            model="gemini-3.5-flash-lite",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+        )
+
+        result = json.loads(
+            response.text
+        )
+
+        db.close()
+
+        return {
+            "success": True,
+            "patient_id": data.patient_id,
+            "assistant": result
+        }
+
+    except Exception as error:
+        print(
+            "AI appointment assistant error:",
+            error
+        )
+
+        db.close()
+
+        return {
+            "success": False,
+            "message": "Unable to understand the appointment request."
+        }
 
 # =========================================================
 # APPOINTMENT MANAGEMENT + DOCTOR AVAILABILITY
