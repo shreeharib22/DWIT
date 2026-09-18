@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from google import genai
 from google.genai import types
@@ -3201,6 +3201,131 @@ async def get_appointments(
 # AI APPOINTMENT ASSISTANT
 # =========================================================
 
+def find_ai_available_slot(
+    db,
+    doctor_list,
+    appointment_date,
+    doctor_user_id=None,
+    time_preference="",
+    exclude_appointment_id=None
+):
+    if not appointment_date:
+        return None
+
+    try:
+        weekday = datetime.strptime(
+            appointment_date,
+            "%Y-%m-%d"
+        ).strftime("%a")
+    except ValueError:
+        return None
+
+    bookings = db.execute(
+        """
+        SELECT id, doctor_user_id, appointment_time
+        FROM appointments
+        WHERE appointment_date = ?
+          AND status NOT IN ('Cancelled', 'No-show')
+        """,
+        (appointment_date,)
+    ).fetchall()
+
+    occupied = {
+        (
+            row["doctor_user_id"],
+            str(row["appointment_time"])[:5]
+        )
+        for row in bookings
+        if not (
+            exclude_appointment_id
+            and str(row["id"]) ==
+            str(exclude_appointment_id)
+        )
+    }
+
+    preference = (
+        time_preference or ""
+    ).lower().strip()
+
+    for doctor in doctor_list:
+
+        if (
+            doctor_user_id
+            and doctor["user_id"] != doctor_user_id
+        ):
+            continue
+
+        if doctor["availability_status"] != "Available":
+            continue
+
+        working_days = [
+            day.strip()[:3]
+            for day in str(
+                doctor["working_days"] or ""
+            ).split(",")
+        ]
+
+        if weekday not in working_days:
+            continue
+
+        try:
+            current = datetime.strptime(
+                doctor["start_time"][:5],
+                "%H:%M"
+            )
+
+            end = datetime.strptime(
+                doctor["end_time"][:5],
+                "%H:%M"
+            )
+        except (ValueError, TypeError):
+            continue
+
+        while current < end:
+
+            hour = current.hour
+            slot = current.strftime("%H:%M")
+
+            matches_preference = (
+                not preference
+                or (
+                    preference == "morning"
+                    and hour < 12
+                )
+                or (
+                    preference == "afternoon"
+                    and 12 <= hour < 17
+                )
+                or (
+                    preference == "evening"
+                    and hour >= 17
+                )
+            )
+
+            if (
+                matches_preference
+                and (
+                    doctor["user_id"],
+                    slot
+                ) not in occupied
+            ):
+                return {
+                    "doctor_user_id":
+                        doctor["user_id"],
+                    "doctor_name":
+                        doctor["name"],
+                    "facility_name":
+                        doctor.get("facility_name"),
+                    "date":
+                        appointment_date,
+                    "time":
+                        slot
+                }
+
+            current += timedelta(minutes=30)
+
+    return None
+
 @app.post("/ai/appointment-assistant")
 async def ai_appointment_assistant(
     data: AppointmentAssistantRequest
@@ -3544,6 +3669,22 @@ PATIENT REQUEST:
         result = json.loads(
             response.text
         )
+
+        if (
+            result.get("date")
+            and not result.get("time")
+        ):
+            slot = find_ai_available_slot(
+                db,
+                doctor_list,
+                result.get("date"),
+                result.get("doctor_user_id"),
+                result.get("time_preference"),
+                result.get("appointment_id")
+            )
+
+            if slot:
+                result.update(slot)
 
         db.close()
 

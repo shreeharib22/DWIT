@@ -2940,7 +2940,9 @@ apiGet(
     </div>
   </div>
 
-  <div class="ai-appointment-input-row">
+<div class="ai-appointment-input-row">
+
+  <div class="ai-appointment-message-wrap">
 
     <textarea
       id="aiAppointmentMessage"
@@ -2950,13 +2952,25 @@ apiGet(
 
     <button
       type="button"
-      class="primary-action"
-      id="aiAppointmentBtn"
+      class="ai-appointment-mic"
+      id="aiAppointmentVoiceBtn"
+      title="Speak your appointment request"
+      aria-label="Speak your appointment request"
     >
-      Ask DWIT
+      🎙️
     </button>
 
   </div>
+
+  <button
+    type="button"
+    class="primary-action"
+    id="aiAppointmentBtn"
+  >
+    Ask DWIT
+  </button>
+
+</div>
 
   <div
     id="aiAppointmentResult"
@@ -3173,6 +3187,121 @@ loadFacilityFinder()
       document.querySelector(
         '#aiAppointmentResult'
       )
+
+// =====================================================
+// AI APPOINTMENT VOICE INPUT
+// =====================================================
+
+const aiAppointmentVoiceButton =
+  document.querySelector(
+    '#aiAppointmentVoiceBtn'
+  )
+
+const AppointmentSpeechRecognition =
+  window.SpeechRecognition ||
+  window.webkitSpeechRecognition
+
+if (
+  aiAppointmentVoiceButton &&
+  AppointmentSpeechRecognition
+) {
+
+  const appointmentSpeech =
+    new AppointmentSpeechRecognition()
+
+  appointmentSpeech.continuous = false
+  appointmentSpeech.interimResults = true
+
+  appointmentSpeech.lang =
+    speechLanguageMap[selectedLanguage] ||
+    'en-IN'
+
+  appointmentSpeech.onstart = () => {
+
+    aiAppointmentVoiceButton.textContent =
+      '🔴'
+
+    aiAppointmentVoiceButton.classList.add(
+      'voice-recording'
+    )
+  }
+
+  appointmentSpeech.onresult =
+    event => {
+
+      let transcript = ''
+
+      for (
+        let i = event.resultIndex;
+        i < event.results.length;
+        i++
+      ) {
+
+        transcript +=
+          event.results[i][0].transcript
+      }
+
+      const messageBox =
+        document.querySelector(
+          '#aiAppointmentMessage'
+        )
+
+      if (messageBox && transcript.trim()) {
+        messageBox.value =
+          transcript.trim()
+      }
+    }
+
+  appointmentSpeech.onerror = () => {
+
+    aiAppointmentVoiceButton.textContent =
+      '🎙️'
+
+    aiAppointmentVoiceButton.classList.remove(
+      'voice-recording'
+    )
+  }
+
+  appointmentSpeech.onend = () => {
+
+    aiAppointmentVoiceButton.textContent =
+      '🎙️'
+
+    aiAppointmentVoiceButton.classList.remove(
+      'voice-recording'
+    )
+  }
+
+  aiAppointmentVoiceButton.addEventListener(
+    'click',
+    () => {
+
+      try {
+
+        appointmentSpeech.lang =
+          speechLanguageMap[selectedLanguage] ||
+          'en-IN'
+
+        appointmentSpeech.start()
+
+      } catch (error) {
+
+        console.error(
+          'Appointment voice input:',
+          error
+        )
+      }
+    }
+  )
+
+} else if (aiAppointmentVoiceButton) {
+
+  aiAppointmentVoiceButton.disabled = true
+
+  aiAppointmentVoiceButton.title =
+    'Voice input is not supported in this browser'
+}
+
 
     aiAppointmentButton?.addEventListener(
       'click',
