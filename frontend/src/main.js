@@ -5103,14 +5103,14 @@ async function openMaternalChildCareCenter() {
     try {
 
       const result =
-        await apiRequest(
-          `/patients/search?q=${encodeURIComponent(query)}`
-        )
+        null
 
       const patients =
-        result?.patients ||
-        result?.results ||
+        filteredPatients(
+          query
+        ) ||
         []
+
 
       if (!patients.length) {
 
@@ -13593,6 +13593,10 @@ document
     `
 
     document.body.appendChild(overlay)
+
+
+
+    
     document.querySelector('#closeAppointmentsCenter')?.addEventListener('click', () => overlay.remove())
     overlay.addEventListener('click', event => { if (event.target === overlay) overlay.remove() })
 
