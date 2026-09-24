@@ -13476,22 +13476,9 @@ document
         }
       )
   }
-
-  function getCurrentActorId() {
-
-    /*
-     * Replace this with the existing DWIT
-     * logged-in staff user ID once we wire
-     * the complete staff data layer.
-     */
-
-    return (
-      window.currentUserId ||
-      window.loggedInUserId ||
-      ''
-    )
-  }
-
+function getCurrentActorId() {
+  return userId || ''
+}
   searchButton?.addEventListener(
     'click',
     searchMaternalPatients
