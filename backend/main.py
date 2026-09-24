@@ -417,6 +417,19 @@ def initialize_database():
         "facility_id",
         "TEXT DEFAULT 'PHC-BENGALURU-RURAL'"
     )
+    add_column_if_missing(
+    db,
+    "lab_reports",
+    "pregnancy_id",
+    "INTEGER"
+)
+
+    add_column_if_missing(
+    db,
+    "lab_reports",
+    "child_id",
+    "TEXT"
+)
 
     # -----------------------------------------------------
     # REFERRALS
@@ -468,6 +481,290 @@ def initialize_database():
             triage_status TEXT DEFAULT 'Normal',
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
+    """)
+
+        # =====================================================
+    # MATERNAL & CHILD CARE
+    # =====================================================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS maternal_pregnancies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id TEXT NOT NULL,
+            pregnancy_number INTEGER NOT NULL,
+            status TEXT NOT NULL DEFAULT 'Active',
+            lmp_date TEXT,
+            edd_date TEXT,
+            mother_blood_group TEXT,
+            partner_blood_group TEXT,
+            rh_review_flag INTEGER DEFAULT 0,
+            assigned_asha_user_id TEXT,
+            facility_id TEXT NOT NULL,
+            risk_status TEXT DEFAULT 'Low Risk',
+            notes TEXT,
+            created_by TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (patient_id, pregnancy_number),
+            FOREIGN KEY (facility_id)
+                REFERENCES facilities(id)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS anc_visits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pregnancy_id INTEGER NOT NULL,
+            patient_id TEXT NOT NULL,
+            visit_number INTEGER NOT NULL,
+            scheduled_window TEXT,
+            visit_date TEXT,
+            facility_id TEXT NOT NULL,
+            clinician_user_id TEXT,
+            blood_pressure TEXT,
+            weight TEXT,
+            haemoglobin TEXT,
+            urine_result TEXT,
+            investigations TEXT,
+            findings TEXT,
+            high_risk INTEGER DEFAULT 0,
+            referral_required INTEGER DEFAULT 0,
+            notes TEXT,
+            created_by TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (pregnancy_id)
+                REFERENCES maternal_pregnancies(id)
+        )
+    """)
+    add_column_if_missing(
+    db,
+    "anc_visits",
+    "next_visit_date",
+    "TEXT"
+)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS asha_home_visits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pregnancy_id INTEGER NOT NULL,
+            patient_id TEXT NOT NULL,
+            asha_user_id TEXT NOT NULL,
+            scheduled_date TEXT,
+            visit_date TEXT,
+            status TEXT DEFAULT 'Scheduled',
+            purpose TEXT,
+            observations TEXT,
+            counselling TEXT,
+            warning_signs TEXT,
+            referral_required INTEGER DEFAULT 0,
+            notes TEXT,
+            offline_created INTEGER DEFAULT 0,
+            synced_at TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (pregnancy_id)
+                REFERENCES maternal_pregnancies(id)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS maternal_immunizations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pregnancy_id INTEGER NOT NULL,
+            patient_id TEXT NOT NULL,
+            vaccine_name TEXT NOT NULL,
+            dose TEXT NOT NULL,
+            scheduled_date TEXT,
+            administered_date TEXT,
+            status TEXT DEFAULT 'Pending',
+            facility_id TEXT NOT NULL,
+            recorded_by TEXT NOT NULL,
+            notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (pregnancy_id)
+                REFERENCES maternal_pregnancies(id)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS deliveries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pregnancy_id INTEGER NOT NULL,
+            patient_id TEXT NOT NULL,
+            delivery_date TEXT,
+            facility_id TEXT NOT NULL,
+            delivery_mode TEXT,
+            baby_count INTEGER DEFAULT 1,
+            complications TEXT,
+            referral_required INTEGER DEFAULT 0,
+            notes TEXT,
+            recorded_by TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (pregnancy_id)
+                REFERENCES maternal_pregnancies(id)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS postnatal_visits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pregnancy_id INTEGER NOT NULL,
+            patient_id TEXT NOT NULL,
+            visit_number INTEGER NOT NULL,
+            visit_type TEXT NOT NULL,
+            visit_date TEXT,
+            facility_id TEXT NOT NULL,
+            recorded_by TEXT NOT NULL,
+            maternal_status TEXT,
+            newborn_status TEXT,
+            family_planning_counselling INTEGER DEFAULT 0,
+            referral_required INTEGER DEFAULT 0,
+            notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (pregnancy_id)
+                REFERENCES maternal_pregnancies(id)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS children (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            child_id TEXT UNIQUE NOT NULL,
+            mother_patient_id TEXT NOT NULL,
+            pregnancy_id INTEGER NOT NULL,
+            name TEXT,
+            date_of_birth TEXT,
+            sex TEXT,
+            birth_weight TEXT,
+            blood_group TEXT,
+            facility_id TEXT NOT NULL,
+            notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (pregnancy_id)
+                REFERENCES maternal_pregnancies(id)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS child_immunizations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            child_id TEXT NOT NULL,
+            vaccine_name TEXT NOT NULL,
+            dose TEXT NOT NULL,
+            scheduled_date TEXT,
+            administered_date TEXT,
+            status TEXT DEFAULT 'Pending',
+            facility_id TEXT NOT NULL,
+            recorded_by TEXT NOT NULL,
+            notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (child_id)
+                REFERENCES children(child_id)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS child_health_visits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            child_id TEXT NOT NULL,
+            visit_date TEXT NOT NULL,
+            visit_type TEXT DEFAULT 'Routine',
+            weight TEXT,
+            height TEXT,
+            developmental_notes TEXT,
+            findings TEXT,
+            referral_required INTEGER DEFAULT 0,
+            facility_id TEXT NOT NULL,
+            recorded_by TEXT NOT NULL,
+            notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (child_id)
+                REFERENCES children(child_id)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS family_planning_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id TEXT NOT NULL,
+            pregnancy_id INTEGER,
+            counselling_date TEXT,
+            methods_discussed TEXT,
+            method_selected TEXT,
+            follow_up_date TEXT,
+            status TEXT DEFAULT 'Counselling',
+            notes TEXT,
+            recorded_by TEXT NOT NULL,
+            facility_id TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (pregnancy_id)
+                REFERENCES maternal_pregnancies(id)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS scheme_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id TEXT NOT NULL,
+            pregnancy_id INTEGER,
+            scheme_name TEXT NOT NULL,
+            eligibility_status TEXT DEFAULT 'To Verify',
+            application_status TEXT DEFAULT 'Not Applied',
+            application_date TEXT,
+            approval_date TEXT,
+            benefit_received_date TEXT,
+            notes TEXT,
+            recorded_by TEXT NOT NULL,
+            facility_id TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (pregnancy_id)
+                REFERENCES maternal_pregnancies(id)
+        )
+    """)
+
+    # Existing lab reports can be linked to a pregnancy or child.
+    add_column_if_missing(
+        db,
+        "lab_reports",
+        "pregnancy_id",
+        "INTEGER"
+    )
+
+    add_column_if_missing(
+        db,
+        "lab_reports",
+        "child_id",
+        "TEXT"
+    )
+
+    # Helpful indexes for fast PHC/patient queries.
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_pregnancy_patient
+        ON maternal_pregnancies(patient_id)
+    """)
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_anc_pregnancy
+        ON anc_visits(pregnancy_id)
+    """)
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_asha_pregnancy
+        ON asha_home_visits(pregnancy_id)
+    """)
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_children_mother
+        ON children(mother_patient_id)
+    """)
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_child_immunization
+        ON child_immunizations(child_id)
+    """)
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_scheme_patient
+        ON scheme_records(patient_id)
     """)
 
     # -----------------------------------------------------
@@ -4173,6 +4470,5273 @@ async def update_appointment(
         "appointment": dict(updated)
     }
 
+
+# =========================================================
+# MATERNAL & CHILD CARE — PREGNANCY MANAGEMENT
+# =========================================================
+
+class MaternalPregnancyCreate(BaseModel):
+    patient_id: str
+    lmp_date: Optional[str] = None
+    edd_date: Optional[str] = None
+    mother_blood_group: Optional[str] = None
+    partner_blood_group: Optional[str] = None
+    assigned_asha_user_id: Optional[str] = None
+    risk_status: str = "Low Risk"
+    notes: Optional[str] = None
+
+
+class MaternalPregnancyUpdate(BaseModel):
+    status: Optional[str] = None
+    lmp_date: Optional[str] = None
+    edd_date: Optional[str] = None
+    mother_blood_group: Optional[str] = None
+    partner_blood_group: Optional[str] = None
+    assigned_asha_user_id: Optional[str] = None
+    risk_status: Optional[str] = None
+    notes: Optional[str] = None
+
+
+def maternal_actor_access(
+    db,
+    actor_id: str,
+    patient_id: str,
+    staff_write: bool = False
+):
+    """
+    Reuse DWIT's existing identity and PHC authorization.
+
+    Patient:
+        Can view only their own record.
+
+    ASHA / Doctor:
+        Must pass staff_can_access_patient().
+
+    staff_write=True:
+        Patient is never allowed to create/update records.
+    """
+
+    actor_id = str(actor_id or "").strip()
+    patient_id = str(patient_id or "").strip()
+
+    if not actor_id or not patient_id:
+        return False, None, "Actor and patient are required"
+
+    # Patient access.
+    if actor_id == patient_id:
+
+        if staff_write:
+            return (
+                False,
+                "patient",
+                "Only an ASHA worker or doctor can modify maternal records"
+            )
+
+        return True, "patient", ""
+
+    # Staff access.
+    actor = get_user(
+        db,
+        actor_id
+    )
+
+    if not actor or actor["role"] not in {
+        "asha",
+        "doctor"
+    }:
+        return (
+            False,
+            None,
+            "Authorized ASHA worker or doctor required"
+        )
+
+    allowed, reason = staff_can_access_patient(
+        db,
+        actor_id,
+        patient_id
+    )
+
+    if not allowed:
+        return False, None, reason
+
+    return True, actor["role"], ""
+
+
+def calculate_rh_review_flag(
+    mother_blood_group,
+    partner_blood_group
+):
+    """
+    Flags the record for clinical review when the recorded
+    maternal blood group is Rh-negative and the partner's
+    recorded blood group is Rh-positive.
+
+    This is only a review flag.
+    It does not make a diagnosis or treatment decision.
+    """
+
+    mother = (
+        str(mother_blood_group or "")
+        .upper()
+        .replace(" ", "")
+    )
+
+    partner = (
+        str(partner_blood_group or "")
+        .upper()
+        .replace(" ", "")
+    )
+
+    if (
+        mother.endswith("-")
+        and partner.endswith("+")
+    ):
+        return 1
+
+    return 0
+
+
+@app.post("/maternal/pregnancies")
+async def create_maternal_pregnancy(
+    data: MaternalPregnancyCreate,
+    actor_id: str
+):
+    db = get_db()
+
+    patient = get_patient(
+        db,
+        data.patient_id
+    )
+
+    if not patient:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found"
+        )
+    patient_gender = str(
+        patient["gender"] or ""
+    ).strip().lower()
+
+    if patient_gender not in {
+        "female",
+        "f"
+    }:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Maternal & Child Care pregnancy "
+                "registration is available only for "
+                "patients with recorded gender as Female"
+            )
+        )
+    
+
+    allowed, role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        data.patient_id,
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    # Assigned ASHA must actually be an ASHA user.
+    if data.assigned_asha_user_id:
+
+        asha = get_user(
+            db,
+            data.assigned_asha_user_id
+        )
+
+        if not asha or asha["role"] != "asha":
+            db.close()
+            raise HTTPException(
+                status_code=404,
+                detail="Assigned ASHA worker not found"
+            )
+
+        asha_allowed, _, asha_reason = maternal_actor_access(
+            db,
+            data.assigned_asha_user_id,
+            data.patient_id,
+            staff_write=False
+        )
+
+        if not asha_allowed:
+            db.close()
+            raise HTTPException(
+                status_code=403,
+                detail=asha_reason
+            )
+
+    # Consecutive pregnancy support.
+    latest = db.execute(
+        """
+        SELECT MAX(pregnancy_number) AS max_number
+        FROM maternal_pregnancies
+        WHERE patient_id = ?
+        """,
+        (
+            data.patient_id,
+        )
+    ).fetchone()
+
+    pregnancy_number = (
+        int(latest["max_number"] or 0) + 1
+    )
+
+    rh_review_flag = calculate_rh_review_flag(
+        data.mother_blood_group,
+        data.partner_blood_group
+    )
+
+    facility_id = (
+        patient["facility_id"]
+        if patient["facility_id"]
+        else None
+    )
+
+    if not facility_id:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Patient is not linked to a PHC/facility"
+        )
+
+    cursor = db.execute(
+        """
+        INSERT INTO maternal_pregnancies (
+            patient_id,
+            pregnancy_number,
+            status,
+            lmp_date,
+            edd_date,
+            mother_blood_group,
+            partner_blood_group,
+            rh_review_flag,
+            assigned_asha_user_id,
+            facility_id,
+            risk_status,
+            notes,
+            created_by,
+            created_at,
+            updated_at
+        )
+        VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
+        )
+        """,
+        (
+            data.patient_id,
+            pregnancy_number,
+            "Active",
+            data.lmp_date,
+            data.edd_date,
+            data.mother_blood_group,
+            data.partner_blood_group,
+            rh_review_flag,
+            data.assigned_asha_user_id,
+            facility_id,
+            data.risk_status,
+            data.notes,
+            actor_id
+        )
+    )
+
+    db.commit()
+
+    pregnancy = db.execute(
+        """
+        SELECT *
+        FROM maternal_pregnancies
+        WHERE id = ?
+        """,
+        (
+            cursor.lastrowid,
+        )
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": (
+            f"Pregnancy #{pregnancy_number} registered successfully"
+        ),
+        "pregnancy": dict(pregnancy)
+    }
+
+
+@app.get("/maternal/patients/{patient_id}/pregnancies")
+async def get_patient_pregnancies(
+    patient_id: str,
+    actor_id: str
+):
+    db = get_db()
+
+    patient = get_patient(
+        db,
+        patient_id
+    )
+
+    if not patient:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found"
+        )
+
+    allowed, role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=False
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    rows = db.execute(
+        """
+        SELECT
+            mp.*,
+            u.name AS assigned_asha_name
+        FROM maternal_pregnancies mp
+        LEFT JOIN users u
+            ON u.user_id = mp.assigned_asha_user_id
+        WHERE mp.patient_id = ?
+        ORDER BY
+            mp.pregnancy_number DESC
+        """,
+        (
+            patient_id,
+        )
+    ).fetchall()
+
+    db.close()
+
+    return {
+        "success": True,
+        "pregnancies": [
+            dict(row)
+            for row in rows
+        ]
+    }
+
+
+@app.patch("/maternal/pregnancies/{pregnancy_id}")
+async def update_maternal_pregnancy(
+    pregnancy_id: int,
+    data: MaternalPregnancyUpdate,
+    actor_id: str
+):
+    db = get_db()
+
+    pregnancy = db.execute(
+        """
+        SELECT *
+        FROM maternal_pregnancies
+        WHERE id = ?
+        """,
+        (
+            pregnancy_id,
+        )
+    ).fetchone()
+
+    if not pregnancy:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Pregnancy record not found"
+        )
+
+    patient_id = pregnancy["patient_id"]
+
+    allowed, role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    new_lmp = (
+        data.lmp_date
+        if data.lmp_date is not None
+        else pregnancy["lmp_date"]
+    )
+
+    new_edd = (
+        data.edd_date
+        if data.edd_date is not None
+        else pregnancy["edd_date"]
+    )
+
+    new_mother_blood = (
+        data.mother_blood_group
+        if data.mother_blood_group is not None
+        else pregnancy["mother_blood_group"]
+    )
+
+    new_partner_blood = (
+        data.partner_blood_group
+        if data.partner_blood_group is not None
+        else pregnancy["partner_blood_group"]
+    )
+
+    new_asha = (
+        data.assigned_asha_user_id
+        if data.assigned_asha_user_id is not None
+        else pregnancy["assigned_asha_user_id"]
+    )
+
+    new_risk = (
+        data.risk_status
+        if data.risk_status is not None
+        else pregnancy["risk_status"]
+    )
+
+    new_status = (
+        data.status
+        if data.status is not None
+        else pregnancy["status"]
+    )
+
+    new_notes = (
+        data.notes
+        if data.notes is not None
+        else pregnancy["notes"]
+    )
+
+    # Validate assigned ASHA when changing assignment.
+    if new_asha:
+
+        asha = get_user(
+            db,
+            new_asha
+        )
+
+        if not asha or asha["role"] != "asha":
+            db.close()
+            raise HTTPException(
+                status_code=404,
+                detail="Assigned ASHA worker not found"
+            )
+
+        asha_allowed, _, asha_reason = maternal_actor_access(
+            db,
+            new_asha,
+            patient_id,
+            staff_write=False
+        )
+
+        if not asha_allowed:
+            db.close()
+            raise HTTPException(
+                status_code=403,
+                detail=asha_reason
+            )
+
+    rh_review_flag = calculate_rh_review_flag(
+        new_mother_blood,
+        new_partner_blood
+    )
+
+    db.execute(
+        """
+        UPDATE maternal_pregnancies
+        SET
+            status = ?,
+            lmp_date = ?,
+            edd_date = ?,
+            mother_blood_group = ?,
+            partner_blood_group = ?,
+            rh_review_flag = ?,
+            assigned_asha_user_id = ?,
+            risk_status = ?,
+            notes = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (
+            new_status,
+            new_lmp,
+            new_edd,
+            new_mother_blood,
+            new_partner_blood,
+            rh_review_flag,
+            new_asha,
+            new_risk,
+            new_notes,
+            pregnancy_id
+        )
+    )
+
+    db.commit()
+
+    updated = db.execute(
+        """
+        SELECT *
+        FROM maternal_pregnancies
+        WHERE id = ?
+        """,
+        (
+            pregnancy_id,
+        )
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Pregnancy record updated successfully",
+        "pregnancy": dict(updated)
+    }
+
+# =========================================================
+# MATERNAL & CHILD CARE — ANC TRACKING
+# =========================================================
+
+class ANCVisitCreate(BaseModel):
+    visit_number: int
+    visit_date: Optional[str] = None
+    clinician_user_id: Optional[str] = None
+    blood_pressure: Optional[str] = None
+    weight: Optional[str] = None
+    haemoglobin: Optional[str] = None
+    urine_result: Optional[str] = None
+    investigations: Optional[str] = None
+    findings: Optional[str] = None
+    high_risk: bool = False
+    referral_required: bool = False
+    next_visit_date: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ANCVisitUpdate(BaseModel):
+    visit_date: Optional[str] = None
+    clinician_user_id: Optional[str] = None
+    blood_pressure: Optional[str] = None
+    weight: Optional[str] = None
+    haemoglobin: Optional[str] = None
+    urine_result: Optional[str] = None
+    investigations: Optional[str] = None
+    findings: Optional[str] = None
+    high_risk: Optional[bool] = None
+    referral_required: Optional[bool] = None
+    next_visit_date: Optional[str] = None
+    notes: Optional[str] = None
+
+
+def get_anc_visit_window(visit_number):
+    windows = {
+        1: "< 12 weeks",
+        2: "14–26 weeks",
+        3: "28–34 weeks",
+        4: "36 weeks–delivery"
+    }
+
+    return windows.get(
+        int(visit_number),
+        "Not specified"
+    )
+
+
+@app.post("/maternal/pregnancies/{pregnancy_id}/anc")
+async def create_anc_visit(
+    pregnancy_id: int,
+    data: ANCVisitCreate,
+    actor_id: str
+):
+    db = get_db()
+
+    pregnancy = db.execute(
+        """
+        SELECT *
+        FROM maternal_pregnancies
+        WHERE id = ?
+        """,
+        (
+            pregnancy_id,
+        )
+    ).fetchone()
+
+    if not pregnancy:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Pregnancy record not found"
+        )
+
+    patient_id = pregnancy["patient_id"]
+
+    allowed, role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    if data.visit_number not in {1, 2, 3, 4}:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail="ANC visit number must be between 1 and 4"
+        )
+
+    # Allow retrospective entry, but prevent duplicate
+    # records for the same ANC milestone.
+    existing = db.execute(
+        """
+        SELECT id
+        FROM anc_visits
+        WHERE pregnancy_id = ?
+          AND visit_number = ?
+        LIMIT 1
+        """,
+        (
+            pregnancy_id,
+            data.visit_number
+        )
+    ).fetchone()
+
+    if existing:
+        db.close()
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"ANC visit {data.visit_number} "
+                "has already been recorded"
+            )
+        )
+
+    facility_id = pregnancy["facility_id"]
+
+    # Optional clinician validation.
+    clinician_user_id = data.clinician_user_id
+
+    if clinician_user_id:
+
+        clinician = get_user(
+            db,
+            clinician_user_id
+        )
+
+        if not clinician or clinician["role"] not in {
+            "doctor",
+            "asha"
+        }:
+            db.close()
+            raise HTTPException(
+                status_code=404,
+                detail="Clinician not found"
+            )
+
+    db.execute(
+        """
+        INSERT INTO anc_visits (
+            pregnancy_id,
+            patient_id,
+            visit_number,
+            scheduled_window,
+            visit_date,
+            facility_id,
+            clinician_user_id,
+            blood_pressure,
+            weight,
+            haemoglobin,
+            urine_result,
+            investigations,
+            findings,
+            high_risk,
+            referral_required,
+next_visit_date,
+notes,
+created_by,
+created_at
+        )
+        VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, CURRENT_TIMESTAMP
+        )
+        """,
+        (
+            pregnancy_id,
+            patient_id,
+            data.visit_number,
+            get_anc_visit_window(
+                data.visit_number
+            ),
+            data.visit_date,
+            facility_id,
+            clinician_user_id,
+            data.blood_pressure,
+            data.weight,
+            data.haemoglobin,
+            data.urine_result,
+            data.investigations,
+            data.findings,
+            1 if data.high_risk else 0,
+            1 if data.referral_required else 0,
+            data.next_visit_date,
+            data.notes,
+            actor_id
+        )
+    )
+
+    db.commit()
+
+    visit = db.execute(
+        """
+        SELECT *
+        FROM anc_visits
+        WHERE pregnancy_id = ?
+          AND visit_number = ?
+        LIMIT 1
+        """,
+        (
+            pregnancy_id,
+            data.visit_number
+        )
+    ).fetchone()
+
+    # Keep the next appointment date in the pregnancy
+    # timeline by recording it in the pregnancy notes.
+    if data.next_visit_date:
+        existing_notes = pregnancy["notes"] or ""
+
+        marker = (
+            "\nNext ANC follow-up: "
+            + data.next_visit_date
+        )
+
+        if marker.strip() not in existing_notes:
+            db.execute(
+                """
+                UPDATE maternal_pregnancies
+                SET
+                    notes = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (
+                    existing_notes + marker,
+                    pregnancy_id
+                )
+            )
+
+            db.commit()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": (
+            f"ANC visit {data.visit_number} recorded successfully"
+        ),
+        "visit": dict(visit)
+    }
+
+
+@app.get("/maternal/pregnancies/{pregnancy_id}/anc")
+async def get_anc_visits(
+    pregnancy_id: int,
+    actor_id: str
+):
+    db = get_db()
+
+    pregnancy = db.execute(
+        """
+        SELECT *
+        FROM maternal_pregnancies
+        WHERE id = ?
+        """,
+        (
+            pregnancy_id,
+        )
+    ).fetchone()
+
+    if not pregnancy:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Pregnancy record not found"
+        )
+
+    patient_id = pregnancy["patient_id"]
+
+    allowed, role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=False
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    rows = db.execute(
+        """
+        SELECT
+            av.*,
+            u.name AS clinician_name
+        FROM anc_visits av
+        LEFT JOIN users u
+            ON u.user_id = av.clinician_user_id
+        WHERE av.pregnancy_id = ?
+        ORDER BY av.visit_number ASC
+        """,
+        (
+            pregnancy_id,
+        )
+    ).fetchall()
+
+    completed_numbers = {
+        int(row["visit_number"])
+        for row in rows
+    }
+
+    milestones = []
+
+    for visit_number in range(1, 5):
+
+        matched = next(
+            (
+                row
+                for row in rows
+                if int(row["visit_number"]) ==
+                visit_number
+            ),
+            None
+        )
+
+        if matched:
+
+            milestones.append({
+                "visit_number": visit_number,
+                "window": get_anc_visit_window(
+                    visit_number
+                ),
+                "status": "Completed",
+                "visit": dict(matched)
+            })
+
+        else:
+
+            milestones.append({
+                "visit_number": visit_number,
+                "window": get_anc_visit_window(
+                    visit_number
+                ),
+                "status": "Pending",
+                "visit": None
+            })
+
+    next_visit_number = next(
+        (
+            number
+            for number in range(1, 5)
+            if number not in completed_numbers
+        ),
+        None
+    )
+
+    db.close()
+
+    return {
+        "success": True,
+        "summary": {
+            "completed": len(completed_numbers),
+            "total": 4,
+            "next_visit_number": next_visit_number
+        },
+        "milestones": milestones,
+        "visits": [
+            dict(row)
+            for row in rows
+        ]
+    }
+
+
+@app.patch("/maternal/anc/{visit_id}")
+async def update_anc_visit(
+    visit_id: int,
+    data: ANCVisitUpdate,
+    actor_id: str
+):
+    db = get_db()
+
+    visit = db.execute(
+        """
+        SELECT *
+        FROM anc_visits
+        WHERE id = ?
+        """,
+        (
+            visit_id,
+        )
+    ).fetchone()
+
+    if not visit:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="ANC visit not found"
+        )
+
+    patient_id = visit["patient_id"]
+
+    allowed, role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    new_visit_date = (
+        data.visit_date
+        if data.visit_date is not None
+        else visit["visit_date"]
+    )
+
+    new_clinician = (
+        data.clinician_user_id
+        if data.clinician_user_id is not None
+        else visit["clinician_user_id"]
+    )
+
+    new_bp = (
+        data.blood_pressure
+        if data.blood_pressure is not None
+        else visit["blood_pressure"]
+    )
+
+    new_weight = (
+        data.weight
+        if data.weight is not None
+        else visit["weight"]
+    )
+
+    new_hb = (
+        data.haemoglobin
+        if data.haemoglobin is not None
+        else visit["haemoglobin"]
+    )
+
+    new_urine = (
+        data.urine_result
+        if data.urine_result is not None
+        else visit["urine_result"]
+    )
+
+    new_investigations = (
+        data.investigations
+        if data.investigations is not None
+        else visit["investigations"]
+    )
+
+    new_findings = (
+        data.findings
+        if data.findings is not None
+        else visit["findings"]
+    )
+
+    new_high_risk = (
+        1
+        if data.high_risk
+        else 0
+    ) if data.high_risk is not None else visit["high_risk"]
+
+    new_referral = (
+        1
+        if data.referral_required
+        else 0
+    ) if data.referral_required is not None else visit["referral_required"]
+
+    new_notes = (
+        data.notes
+        if data.notes is not None
+        else visit["notes"]
+    )
+
+    if new_clinician:
+
+        clinician = get_user(
+            db,
+            new_clinician
+        )
+
+        if not clinician or clinician["role"] not in {
+            "doctor",
+            "asha"
+        }:
+            db.close()
+            raise HTTPException(
+                status_code=404,
+                detail="Clinician not found"
+            )
+
+    db.execute(
+        """
+        UPDATE anc_visits
+        SET
+            visit_date = ?,
+            clinician_user_id = ?,
+            blood_pressure = ?,
+            weight = ?,
+            haemoglobin = ?,
+            urine_result = ?,
+            investigations = ?,
+            findings = ?,
+            high_risk = ?,
+            referral_required = ?,
+            notes = ?
+        WHERE id = ?
+        """,
+        (
+            new_visit_date,
+            new_clinician,
+            new_bp,
+            new_weight,
+            new_hb,
+            new_urine,
+            new_investigations,
+            new_findings,
+            new_high_risk,
+            new_referral,
+            new_notes,
+            visit_id
+        )
+    )
+
+    db.commit()
+
+    updated = db.execute(
+        """
+        SELECT *
+        FROM anc_visits
+        WHERE id = ?
+        """,
+        (
+            visit_id,
+        )
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "ANC visit updated successfully",
+        "visit": dict(updated)
+    }
+
+# =========================================================
+# MATERNAL & CHILD CARE — ASHA HOME VISITS
+# =========================================================
+
+class ASHAHomeVisitCreate(BaseModel):
+    asha_user_id: str
+    scheduled_date: Optional[str] = None
+    visit_date: Optional[str] = None
+    status: str = "Scheduled"
+    purpose: Optional[str] = None
+    observations: Optional[str] = None
+    counselling: Optional[str] = None
+    warning_signs: Optional[str] = None
+    referral_required: bool = False
+    notes: Optional[str] = None
+    offline_created: bool = False
+
+
+class ASHAHomeVisitUpdate(BaseModel):
+    scheduled_date: Optional[str] = None
+    visit_date: Optional[str] = None
+    status: Optional[str] = None
+    purpose: Optional[str] = None
+    observations: Optional[str] = None
+    counselling: Optional[str] = None
+    warning_signs: Optional[str] = None
+    referral_required: Optional[bool] = None
+    notes: Optional[str] = None
+
+
+@app.post(
+    "/maternal/pregnancies/{pregnancy_id}/asha-home-visits"
+)
+async def create_asha_home_visit(
+    pregnancy_id: int,
+    data: ASHAHomeVisitCreate,
+    actor_id: str
+):
+    db = get_db()
+
+    pregnancy = db.execute(
+        """
+        SELECT *
+        FROM maternal_pregnancies
+        WHERE id = ?
+        """,
+        (
+            pregnancy_id,
+        )
+    ).fetchone()
+
+    if not pregnancy:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Pregnancy record not found"
+        )
+
+    patient_id = pregnancy["patient_id"]
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    # The assigned worker must be a real ASHA user.
+    asha = get_user(
+        db,
+        data.asha_user_id
+    )
+
+    if not asha or asha["role"] != "asha":
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="ASHA worker not found"
+        )
+
+    # An ASHA worker can only create visits for herself.
+    if (
+        actor_role == "asha"
+        and str(actor_id) != str(data.asha_user_id)
+    ):
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "ASHA workers can only record their own "
+                "home visits"
+            )
+        )
+
+    # Check that the ASHA is permitted to access this patient.
+    asha_allowed, _, asha_reason = maternal_actor_access(
+        db,
+        data.asha_user_id,
+        patient_id,
+        staff_write=False
+    )
+
+    if not asha_allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=asha_reason
+        )
+
+    valid_statuses = {
+        "Scheduled",
+        "Completed",
+        "Missed",
+        "Cancelled"
+    }
+
+    if data.status not in valid_statuses:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Status must be Scheduled, Completed, "
+                "Missed, or Cancelled"
+            )
+        )
+
+    now = datetime.now().isoformat(
+        timespec="seconds"
+    )
+
+    synced_at = (
+        now
+        if data.offline_created
+        else None
+    )
+
+    cursor = db.execute(
+        """
+        INSERT INTO asha_home_visits (
+            pregnancy_id,
+            patient_id,
+            asha_user_id,
+            scheduled_date,
+            visit_date,
+            status,
+            purpose,
+            observations,
+            counselling,
+            warning_signs,
+            referral_required,
+            notes,
+            offline_created,
+            synced_at,
+            created_at
+        )
+        VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        )
+        """,
+        (
+            pregnancy_id,
+            patient_id,
+            data.asha_user_id,
+            data.scheduled_date,
+            data.visit_date,
+            data.status,
+            data.purpose,
+            data.observations,
+            data.counselling,
+            data.warning_signs,
+            1 if data.referral_required else 0,
+            data.notes,
+            1 if data.offline_created else 0,
+            synced_at,
+            now
+        )
+    )
+
+    db.commit()
+
+    visit = db.execute(
+        """
+        SELECT
+            ahv.*,
+            u.name AS asha_name
+        FROM asha_home_visits ahv
+        LEFT JOIN users u
+            ON u.user_id = ahv.asha_user_id
+        WHERE ahv.id = ?
+        """,
+        (
+            cursor.lastrowid,
+        )
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "ASHA home visit recorded successfully",
+        "visit": dict(visit)
+    }
+
+
+@app.get(
+    "/maternal/pregnancies/{pregnancy_id}/asha-home-visits"
+)
+async def get_asha_home_visits(
+    pregnancy_id: int,
+    actor_id: str
+):
+    db = get_db()
+
+    pregnancy = db.execute(
+        """
+        SELECT *
+        FROM maternal_pregnancies
+        WHERE id = ?
+        """,
+        (
+            pregnancy_id,
+        )
+    ).fetchone()
+
+    if not pregnancy:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Pregnancy record not found"
+        )
+
+    patient_id = pregnancy["patient_id"]
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=False
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    rows = db.execute(
+        """
+        SELECT
+            ahv.*,
+            u.name AS asha_name
+        FROM asha_home_visits ahv
+        LEFT JOIN users u
+            ON u.user_id = ahv.asha_user_id
+        WHERE ahv.pregnancy_id = ?
+        ORDER BY
+            COALESCE(
+                ahv.scheduled_date,
+                ahv.visit_date
+            ) ASC,
+            ahv.id ASC
+        """,
+        (
+            pregnancy_id,
+        )
+    ).fetchall()
+
+    completed = 0
+    scheduled = 0
+    missed = 0
+    cancelled = 0
+
+    for row in rows:
+        status = str(
+            row["status"] or ""
+        )
+
+        if status == "Completed":
+            completed += 1
+        elif status == "Scheduled":
+            scheduled += 1
+        elif status == "Missed":
+            missed += 1
+        elif status == "Cancelled":
+            cancelled += 1
+
+    db.close()
+
+    return {
+        "success": True,
+        "summary": {
+            "total": len(rows),
+            "completed": completed,
+            "scheduled": scheduled,
+            "missed": missed,
+            "cancelled": cancelled
+        },
+        "visits": [
+            dict(row)
+            for row in rows
+        ]
+    }
+
+
+@app.patch(
+    "/maternal/asha-home-visits/{visit_id}"
+)
+async def update_asha_home_visit(
+    visit_id: int,
+    data: ASHAHomeVisitUpdate,
+    actor_id: str
+):
+    db = get_db()
+
+    visit = db.execute(
+        """
+        SELECT *
+        FROM asha_home_visits
+        WHERE id = ?
+        """,
+        (
+            visit_id,
+        )
+    ).fetchone()
+
+    if not visit:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="ASHA home visit not found"
+        )
+
+    patient_id = visit["patient_id"]
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    # An ASHA can only update her own assigned visit.
+    if (
+        actor_role == "asha"
+        and str(actor_id) != str(visit["asha_user_id"])
+    ):
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "ASHA workers can only update "
+                "their own home visits"
+            )
+        )
+
+    new_scheduled_date = (
+        data.scheduled_date
+        if data.scheduled_date is not None
+        else visit["scheduled_date"]
+    )
+
+    new_visit_date = (
+        data.visit_date
+        if data.visit_date is not None
+        else visit["visit_date"]
+    )
+
+    new_status = (
+        data.status
+        if data.status is not None
+        else visit["status"]
+    )
+
+    new_purpose = (
+        data.purpose
+        if data.purpose is not None
+        else visit["purpose"]
+    )
+
+    new_observations = (
+        data.observations
+        if data.observations is not None
+        else visit["observations"]
+    )
+
+    new_counselling = (
+        data.counselling
+        if data.counselling is not None
+        else visit["counselling"]
+    )
+
+    new_warning_signs = (
+        data.warning_signs
+        if data.warning_signs is not None
+        else visit["warning_signs"]
+    )
+
+    new_referral = (
+        1 if data.referral_required else 0
+    ) if data.referral_required is not None else visit[
+        "referral_required"
+    ]
+
+    new_notes = (
+        data.notes
+        if data.notes is not None
+        else visit["notes"]
+    )
+
+    valid_statuses = {
+        "Scheduled",
+        "Completed",
+        "Missed",
+        "Cancelled"
+    }
+
+    if new_status not in valid_statuses:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Status must be Scheduled, Completed, "
+                "Missed, or Cancelled"
+            )
+        )
+
+    db.execute(
+        """
+        UPDATE asha_home_visits
+        SET
+            scheduled_date = ?,
+            visit_date = ?,
+            status = ?,
+            purpose = ?,
+            observations = ?,
+            counselling = ?,
+            warning_signs = ?,
+            referral_required = ?,
+            notes = ?
+        WHERE id = ?
+        """,
+        (
+            new_scheduled_date,
+            new_visit_date,
+            new_status,
+            new_purpose,
+            new_observations,
+            new_counselling,
+            new_warning_signs,
+            new_referral,
+            new_notes,
+            visit_id
+        )
+    )
+
+    db.commit()
+
+    updated = db.execute(
+        """
+        SELECT
+            ahv.*,
+            u.name AS asha_name
+        FROM asha_home_visits ahv
+        LEFT JOIN users u
+            ON u.user_id = ahv.asha_user_id
+        WHERE ahv.id = ?
+        """,
+        (
+            visit_id,
+        )
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "ASHA home visit updated successfully",
+        "visit": dict(updated)
+    }
+
+
+@app.get(
+    "/maternal/asha/{asha_user_id}/home-visits"
+)
+async def get_asha_worker_home_visits(
+    asha_user_id: str,
+    actor_id: str,
+    status: Optional[str] = None
+):
+    db = get_db()
+
+    actor = get_user(
+        db,
+        actor_id
+    )
+
+    if not actor or actor["role"] not in {
+        "asha",
+        "doctor"
+    }:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail="Authorized ASHA worker or doctor required"
+        )
+
+    # ASHA workers may only view their own workload.
+    if (
+        actor["role"] == "asha"
+        and str(actor_id) != str(asha_user_id)
+    ):
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "ASHA workers can only view "
+                "their own home visits"
+            )
+        )
+
+    query = """
+        SELECT
+            ahv.*,
+            p.name AS patient_name,
+            u.name AS asha_name
+        FROM asha_home_visits ahv
+        JOIN patients p
+            ON p.patient_id = ahv.patient_id
+        LEFT JOIN users u
+            ON u.user_id = ahv.asha_user_id
+        WHERE ahv.asha_user_id = ?
+    """
+
+    params = [asha_user_id]
+
+    if status:
+        query += " AND ahv.status = ?"
+        params.append(status)
+
+    query += """
+        ORDER BY
+            COALESCE(
+                ahv.scheduled_date,
+                ahv.visit_date
+            ) ASC,
+            ahv.id ASC
+    """
+
+    rows = db.execute(
+        query,
+        params
+    ).fetchall()
+
+    db.close()
+
+    return {
+        "success": True,
+        "visits": [
+            dict(row)
+            for row in rows
+        ]
+    }
+
+# =========================================================
+# MATERNAL & CHILD CARE — MATERNAL VACCINATION
+# =========================================================
+
+class MaternalImmunizationCreate(BaseModel):
+    vaccine_name: str
+    dose: str
+    scheduled_date: Optional[str] = None
+    administered_date: Optional[str] = None
+    status: str = "Pending"
+    notes: Optional[str] = None
+
+
+class MaternalImmunizationUpdate(BaseModel):
+    vaccine_name: Optional[str] = None
+    dose: Optional[str] = None
+    scheduled_date: Optional[str] = None
+    administered_date: Optional[str] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
+
+@app.post(
+    "/maternal/pregnancies/{pregnancy_id}/vaccinations"
+)
+async def create_maternal_immunization(
+    pregnancy_id: int,
+    data: MaternalImmunizationCreate,
+    actor_id: str
+):
+    db = get_db()
+
+    pregnancy = db.execute(
+        """
+        SELECT *
+        FROM maternal_pregnancies
+        WHERE id = ?
+        """,
+        (pregnancy_id,)
+    ).fetchone()
+
+    if not pregnancy:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Pregnancy record not found"
+        )
+
+    patient_id = pregnancy["patient_id"]
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    valid_statuses = {
+        "Pending",
+        "Completed",
+        "Missed",
+        "Not Due",
+        "Cancelled"
+    }
+
+    if data.status not in valid_statuses:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Invalid vaccination status"
+            )
+        )
+
+    cursor = db.execute(
+        """
+        INSERT INTO maternal_immunizations (
+            pregnancy_id,
+            patient_id,
+            vaccine_name,
+            dose,
+            scheduled_date,
+            administered_date,
+            status,
+            facility_id,
+            recorded_by,
+            notes,
+            created_at
+        )
+        VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
+        )
+        """,
+        (
+            pregnancy_id,
+            patient_id,
+            data.vaccine_name.strip(),
+            data.dose.strip(),
+            data.scheduled_date,
+            data.administered_date,
+            data.status,
+            pregnancy["facility_id"],
+            actor_id,
+            data.notes
+        )
+    )
+
+    db.commit()
+
+    vaccination = db.execute(
+        """
+        SELECT *
+        FROM maternal_immunizations
+        WHERE id = ?
+        """,
+        (cursor.lastrowid,)
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Maternal vaccination recorded successfully",
+        "vaccination": dict(vaccination)
+    }
+
+
+@app.get(
+    "/maternal/pregnancies/{pregnancy_id}/vaccinations"
+)
+async def get_maternal_immunizations(
+    pregnancy_id: int,
+    actor_id: str
+):
+    db = get_db()
+
+    pregnancy = db.execute(
+        """
+        SELECT *
+        FROM maternal_pregnancies
+        WHERE id = ?
+        """,
+        (pregnancy_id,)
+    ).fetchone()
+
+    if not pregnancy:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Pregnancy record not found"
+        )
+
+    patient_id = pregnancy["patient_id"]
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=False
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    rows = db.execute(
+        """
+        SELECT *
+        FROM maternal_immunizations
+        WHERE pregnancy_id = ?
+        ORDER BY
+            CASE
+                WHEN scheduled_date IS NULL THEN 1
+                ELSE 0
+            END,
+            scheduled_date ASC,
+            id ASC
+        """,
+        (pregnancy_id,)
+    ).fetchall()
+
+    summary = {
+        "total": len(rows),
+        "completed": 0,
+        "pending": 0,
+        "missed": 0,
+        "not_due": 0
+    }
+
+    for row in rows:
+
+        status = str(
+            row["status"] or ""
+        ).lower()
+
+        if status == "completed":
+            summary["completed"] += 1
+
+        elif status == "pending":
+            summary["pending"] += 1
+
+        elif status == "missed":
+            summary["missed"] += 1
+
+        elif status == "not due":
+            summary["not_due"] += 1
+
+    db.close()
+
+    return {
+        "success": True,
+        "summary": summary,
+        "vaccinations": [
+            dict(row)
+            for row in rows
+        ]
+    }
+
+
+@app.patch(
+    "/maternal/vaccinations/{vaccination_id}"
+)
+async def update_maternal_immunization(
+    vaccination_id: int,
+    data: MaternalImmunizationUpdate,
+    actor_id: str
+):
+    db = get_db()
+
+    vaccination = db.execute(
+        """
+        SELECT *
+        FROM maternal_immunizations
+        WHERE id = ?
+        """,
+        (vaccination_id,)
+    ).fetchone()
+
+    if not vaccination:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Maternal vaccination not found"
+        )
+
+    patient_id = vaccination["patient_id"]
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    new_vaccine_name = (
+        data.vaccine_name
+        if data.vaccine_name is not None
+        else vaccination["vaccine_name"]
+    )
+
+    new_dose = (
+        data.dose
+        if data.dose is not None
+        else vaccination["dose"]
+    )
+
+    new_scheduled_date = (
+        data.scheduled_date
+        if data.scheduled_date is not None
+        else vaccination["scheduled_date"]
+    )
+
+    new_administered_date = (
+        data.administered_date
+        if data.administered_date is not None
+        else vaccination["administered_date"]
+    )
+
+    new_status = (
+        data.status
+        if data.status is not None
+        else vaccination["status"]
+    )
+
+    new_notes = (
+        data.notes
+        if data.notes is not None
+        else vaccination["notes"]
+    )
+
+    valid_statuses = {
+        "Pending",
+        "Completed",
+        "Missed",
+        "Not Due",
+        "Cancelled"
+    }
+
+    if new_status not in valid_statuses:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid vaccination status"
+        )
+
+    db.execute(
+        """
+        UPDATE maternal_immunizations
+        SET
+            vaccine_name = ?,
+            dose = ?,
+            scheduled_date = ?,
+            administered_date = ?,
+            status = ?,
+            notes = ?
+        WHERE id = ?
+        """,
+        (
+            new_vaccine_name,
+            new_dose,
+            new_scheduled_date,
+            new_administered_date,
+            new_status,
+            new_notes,
+            vaccination_id
+        )
+    )
+
+    db.commit()
+
+    updated = db.execute(
+        """
+        SELECT *
+        FROM maternal_immunizations
+        WHERE id = ?
+        """,
+        (vaccination_id,)
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Maternal vaccination updated successfully",
+        "vaccination": dict(updated)
+    }
+
+
+# =========================================================
+# MATERNAL & CHILD CARE — DELIVERY + POSTNATAL CARE
+# =========================================================
+
+class DeliveryCreate(BaseModel):
+    delivery_date: Optional[str] = None
+    delivery_mode: Optional[str] = None
+    baby_count: int = 1
+    complications: Optional[str] = None
+    referral_required: bool = False
+    notes: Optional[str] = None
+
+
+class DeliveryUpdate(BaseModel):
+    delivery_date: Optional[str] = None
+    delivery_mode: Optional[str] = None
+    baby_count: Optional[int] = None
+    complications: Optional[str] = None
+    referral_required: Optional[bool] = None
+    notes: Optional[str] = None
+
+
+class PostnatalVisitCreate(BaseModel):
+    visit_number: int
+    visit_type: str = "Postnatal"
+    visit_date: Optional[str] = None
+    maternal_status: Optional[str] = None
+    newborn_status: Optional[str] = None
+    family_planning_counselling: bool = False
+    referral_required: bool = False
+    notes: Optional[str] = None
+
+
+class PostnatalVisitUpdate(BaseModel):
+    visit_type: Optional[str] = None
+    visit_date: Optional[str] = None
+    maternal_status: Optional[str] = None
+    newborn_status: Optional[str] = None
+    family_planning_counselling: Optional[bool] = None
+    referral_required: Optional[bool] = None
+    notes: Optional[str] = None
+
+
+@app.post(
+    "/maternal/pregnancies/{pregnancy_id}/delivery"
+)
+async def create_delivery(
+    pregnancy_id: int,
+    data: DeliveryCreate,
+    actor_id: str
+):
+    db = get_db()
+
+    pregnancy = db.execute(
+        """
+        SELECT *
+        FROM maternal_pregnancies
+        WHERE id = ?
+        """,
+        (pregnancy_id,)
+    ).fetchone()
+
+    if not pregnancy:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Pregnancy record not found"
+        )
+
+    patient_id = pregnancy["patient_id"]
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    existing = db.execute(
+        """
+        SELECT id
+        FROM deliveries
+        WHERE pregnancy_id = ?
+        LIMIT 1
+        """,
+        (pregnancy_id,)
+    ).fetchone()
+
+    if existing:
+        db.close()
+        raise HTTPException(
+            status_code=409,
+            detail="Delivery record already exists"
+        )
+
+    if data.baby_count < 1:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Baby count must be at least 1"
+        )
+
+    delivery = db.execute(
+        """
+        INSERT INTO deliveries (
+            pregnancy_id,
+            patient_id,
+            delivery_date,
+            facility_id,
+            delivery_mode,
+            baby_count,
+            complications,
+            referral_required,
+            notes,
+            recorded_by,
+            created_at
+        )
+        VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
+        )
+        """,
+        (
+            pregnancy_id,
+            patient_id,
+            data.delivery_date,
+            pregnancy["facility_id"],
+            data.delivery_mode,
+            data.baby_count,
+            data.complications,
+            1 if data.referral_required else 0,
+            data.notes,
+            actor_id
+        )
+    )
+
+    # Once a delivery is recorded, close the active
+    # pregnancy episode without deleting any history.
+    db.execute(
+        """
+        UPDATE maternal_pregnancies
+        SET
+            status = 'Delivered',
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (pregnancy_id,)
+    )
+
+    db.commit()
+
+    saved = db.execute(
+        """
+        SELECT
+            d.*,
+            mp.pregnancy_number
+        FROM deliveries d
+        JOIN maternal_pregnancies mp
+            ON mp.id = d.pregnancy_id
+        WHERE d.id = ?
+        """,
+        (delivery.lastrowid,)
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Delivery record saved successfully",
+        "delivery": dict(saved)
+    }
+
+
+@app.get(
+    "/maternal/pregnancies/{pregnancy_id}/delivery"
+)
+async def get_delivery(
+    pregnancy_id: int,
+    actor_id: str
+):
+    db = get_db()
+
+    pregnancy = db.execute(
+        """
+        SELECT *
+        FROM maternal_pregnancies
+        WHERE id = ?
+        """,
+        (pregnancy_id,)
+    ).fetchone()
+
+    if not pregnancy:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Pregnancy record not found"
+        )
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        pregnancy["patient_id"],
+        staff_write=False
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    delivery = db.execute(
+        """
+        SELECT *
+        FROM deliveries
+        WHERE pregnancy_id = ?
+        LIMIT 1
+        """,
+        (pregnancy_id,)
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "delivery": (
+            dict(delivery)
+            if delivery
+            else None
+        )
+    }
+
+
+@app.patch(
+    "/maternal/delivery/{delivery_id}"
+)
+async def update_delivery(
+    delivery_id: int,
+    data: DeliveryUpdate,
+    actor_id: str
+):
+    db = get_db()
+
+    delivery = db.execute(
+        """
+        SELECT *
+        FROM deliveries
+        WHERE id = ?
+        """,
+        (delivery_id,)
+    ).fetchone()
+
+    if not delivery:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Delivery record not found"
+        )
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        delivery["patient_id"],
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    new_date = (
+        data.delivery_date
+        if data.delivery_date is not None
+        else delivery["delivery_date"]
+    )
+
+    new_mode = (
+        data.delivery_mode
+        if data.delivery_mode is not None
+        else delivery["delivery_mode"]
+    )
+
+    new_baby_count = (
+        data.baby_count
+        if data.baby_count is not None
+        else delivery["baby_count"]
+    )
+
+    new_complications = (
+        data.complications
+        if data.complications is not None
+        else delivery["complications"]
+    )
+
+    new_referral = (
+        1 if data.referral_required else 0
+    ) if data.referral_required is not None else delivery[
+        "referral_required"
+    ]
+
+    new_notes = (
+        data.notes
+        if data.notes is not None
+        else delivery["notes"]
+    )
+
+    if new_baby_count < 1:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Baby count must be at least 1"
+        )
+
+    db.execute(
+        """
+        UPDATE deliveries
+        SET
+            delivery_date = ?,
+            delivery_mode = ?,
+            baby_count = ?,
+            complications = ?,
+            referral_required = ?,
+            notes = ?
+        WHERE id = ?
+        """,
+        (
+            new_date,
+            new_mode,
+            new_baby_count,
+            new_complications,
+            new_referral,
+            new_notes,
+            delivery_id
+        )
+    )
+
+    db.commit()
+
+    updated = db.execute(
+        """
+        SELECT *
+        FROM deliveries
+        WHERE id = ?
+        """,
+        (delivery_id,)
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Delivery record updated successfully",
+        "delivery": dict(updated)
+    }
+
+
+@app.post(
+    "/maternal/pregnancies/{pregnancy_id}/postnatal"
+)
+async def create_postnatal_visit(
+    pregnancy_id: int,
+    data: PostnatalVisitCreate,
+    actor_id: str
+):
+    db = get_db()
+
+    pregnancy = db.execute(
+        """
+        SELECT *
+        FROM maternal_pregnancies
+        WHERE id = ?
+        """,
+        (pregnancy_id,)
+    ).fetchone()
+
+    if not pregnancy:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Pregnancy record not found"
+        )
+
+    patient_id = pregnancy["patient_id"]
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    if data.visit_number < 1:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid postnatal visit number"
+        )
+
+    existing = db.execute(
+        """
+        SELECT id
+        FROM postnatal_visits
+        WHERE pregnancy_id = ?
+          AND visit_number = ?
+        LIMIT 1
+        """,
+        (
+            pregnancy_id,
+            data.visit_number
+        )
+    ).fetchone()
+
+    if existing:
+        db.close()
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Postnatal visit {data.visit_number} "
+                "has already been recorded"
+            )
+        )
+
+    db.execute(
+        """
+        INSERT INTO postnatal_visits (
+            pregnancy_id,
+            patient_id,
+            visit_number,
+            visit_type,
+            visit_date,
+            facility_id,
+            recorded_by,
+            maternal_status,
+            newborn_status,
+            family_planning_counselling,
+            referral_required,
+            notes,
+            created_at
+        )
+        VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
+        )
+        """,
+        (
+            pregnancy_id,
+            patient_id,
+            data.visit_number,
+            data.visit_type,
+            data.visit_date,
+            pregnancy["facility_id"],
+            actor_id,
+            data.maternal_status,
+            data.newborn_status,
+            1 if data.family_planning_counselling else 0,
+            1 if data.referral_required else 0,
+            data.notes
+        )
+    )
+
+    db.commit()
+
+    visit = db.execute(
+        """
+        SELECT *
+        FROM postnatal_visits
+        WHERE pregnancy_id = ?
+          AND visit_number = ?
+        LIMIT 1
+        """,
+        (
+            pregnancy_id,
+            data.visit_number
+        )
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Postnatal visit recorded successfully",
+        "visit": dict(visit)
+    }
+
+
+@app.get(
+    "/maternal/pregnancies/{pregnancy_id}/postnatal"
+)
+async def get_postnatal_visits(
+    pregnancy_id: int,
+    actor_id: str
+):
+    db = get_db()
+
+    pregnancy = db.execute(
+        """
+        SELECT *
+        FROM maternal_pregnancies
+        WHERE id = ?
+        """,
+        (pregnancy_id,)
+    ).fetchone()
+
+    if not pregnancy:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Pregnancy record not found"
+        )
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        pregnancy["patient_id"],
+        staff_write=False
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    rows = db.execute(
+        """
+        SELECT
+            pv.*,
+            u.name AS clinician_name
+        FROM postnatal_visits pv
+        LEFT JOIN users u
+            ON u.user_id = pv.recorded_by
+        WHERE pv.pregnancy_id = ?
+        ORDER BY
+            pv.visit_number ASC
+        """,
+        (pregnancy_id,)
+    ).fetchall()
+
+    db.close()
+
+    return {
+        "success": True,
+        "summary": {
+            "completed": len(rows)
+        },
+        "visits": [
+            dict(row)
+            for row in rows
+        ]
+    }
+
+
+@app.patch(
+    "/maternal/postnatal/{visit_id}"
+)
+async def update_postnatal_visit(
+    visit_id: int,
+    data: PostnatalVisitUpdate,
+    actor_id: str
+):
+    db = get_db()
+
+    visit = db.execute(
+        """
+        SELECT *
+        FROM postnatal_visits
+        WHERE id = ?
+        """,
+        (visit_id,)
+    ).fetchone()
+
+    if not visit:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Postnatal visit not found"
+        )
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        visit["patient_id"],
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    new_visit_type = (
+        data.visit_type
+        if data.visit_type is not None
+        else visit["visit_type"]
+    )
+
+    new_date = (
+        data.visit_date
+        if data.visit_date is not None
+        else visit["visit_date"]
+    )
+
+    new_maternal_status = (
+        data.maternal_status
+        if data.maternal_status is not None
+        else visit["maternal_status"]
+    )
+
+    new_newborn_status = (
+        data.newborn_status
+        if data.newborn_status is not None
+        else visit["newborn_status"]
+    )
+
+    new_family_planning = (
+        1 if data.family_planning_counselling else 0
+    ) if data.family_planning_counselling is not None else visit[
+        "family_planning_counselling"
+    ]
+
+    new_referral = (
+        1 if data.referral_required else 0
+    ) if data.referral_required is not None else visit[
+        "referral_required"
+    ]
+
+    new_notes = (
+        data.notes
+        if data.notes is not None
+        else visit["notes"]
+    )
+
+    db.execute(
+        """
+        UPDATE postnatal_visits
+        SET
+            visit_type = ?,
+            visit_date = ?,
+            maternal_status = ?,
+            newborn_status = ?,
+            family_planning_counselling = ?,
+            referral_required = ?,
+            notes = ?
+        WHERE id = ?
+        """,
+        (
+            new_visit_type,
+            new_date,
+            new_maternal_status,
+            new_newborn_status,
+            new_family_planning,
+            new_referral,
+            new_notes,
+            visit_id
+        )
+    )
+
+    db.commit()
+
+    updated = db.execute(
+        """
+        SELECT *
+        FROM postnatal_visits
+        WHERE id = ?
+        """,
+        (visit_id,)
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Postnatal visit updated successfully",
+        "visit": dict(updated)
+    }
+
+# =========================================================
+# MATERNAL & CHILD CARE — CHILDREN 0–6 YEARS
+# =========================================================
+
+class ChildCreate(BaseModel):
+    name: Optional[str] = None
+    date_of_birth: str
+    sex: Optional[str] = None
+    birth_weight: Optional[str] = None
+    blood_group: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ChildUpdate(BaseModel):
+    name: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    sex: Optional[str] = None
+    birth_weight: Optional[str] = None
+    blood_group: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ChildImmunizationCreate(BaseModel):
+    vaccine_name: str
+    dose: str
+    scheduled_date: Optional[str] = None
+    administered_date: Optional[str] = None
+    status: str = "Pending"
+    notes: Optional[str] = None
+
+
+class ChildImmunizationUpdate(BaseModel):
+    vaccine_name: Optional[str] = None
+    dose: Optional[str] = None
+    scheduled_date: Optional[str] = None
+    administered_date: Optional[str] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ChildHealthVisitCreate(BaseModel):
+    visit_date: str
+    visit_type: str = "Routine"
+    weight: Optional[str] = None
+    height: Optional[str] = None
+    developmental_notes: Optional[str] = None
+    findings: Optional[str] = None
+    referral_required: bool = False
+    notes: Optional[str] = None
+
+
+class ChildHealthVisitUpdate(BaseModel):
+    visit_date: Optional[str] = None
+    visit_type: Optional[str] = None
+    weight: Optional[str] = None
+    height: Optional[str] = None
+    developmental_notes: Optional[str] = None
+    findings: Optional[str] = None
+    referral_required: Optional[bool] = None
+    notes: Optional[str] = None
+
+
+def child_age_from_dob(date_of_birth):
+    try:
+        dob = datetime.strptime(
+            date_of_birth,
+            "%Y-%m-%d"
+        )
+    except (ValueError, TypeError):
+        return None
+
+    today = datetime.now()
+
+    years = today.year - dob.year
+    months = today.month - dob.month
+
+    if today.day < dob.day:
+        months -= 1
+
+    if months < 0:
+        years -= 1
+        months += 12
+
+    if years < 0:
+        return None
+
+    return {
+        "years": years,
+        "months": months
+    }
+
+
+@app.post(
+    "/maternal/pregnancies/{pregnancy_id}/children"
+)
+async def create_child(
+    pregnancy_id: int,
+    data: ChildCreate,
+    actor_id: str
+):
+    db = get_db()
+
+    pregnancy = db.execute(
+        """
+        SELECT *
+        FROM maternal_pregnancies
+        WHERE id = ?
+        """,
+        (pregnancy_id,)
+    ).fetchone()
+
+    if not pregnancy:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Pregnancy record not found"
+        )
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        pregnancy["patient_id"],
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    # A child should be registered against a completed
+    # delivery record.
+    delivery = db.execute(
+        """
+        SELECT *
+        FROM deliveries
+        WHERE pregnancy_id = ?
+        LIMIT 1
+        """,
+        (pregnancy_id,)
+    ).fetchone()
+
+    if not delivery:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Record the delivery before registering "
+                "the child"
+            )
+        )
+
+    existing_count_row = db.execute(
+        """
+        SELECT COUNT(*) AS total
+        FROM children
+        WHERE pregnancy_id = ?
+        """,
+        (pregnancy_id,)
+    ).fetchone()
+
+    existing_count = int(
+        existing_count_row["total"] or 0
+    )
+
+    expected_count = int(
+        delivery["baby_count"] or 1
+    )
+
+    if existing_count >= expected_count:
+        db.close()
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "All children recorded for this delivery"
+            )
+        )
+
+    age = child_age_from_dob(
+        data.date_of_birth
+    )
+
+    if not age:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Date of birth must be a valid "
+                "YYYY-MM-DD date"
+            )
+        )
+
+    # Child DOB cannot be after today.
+    if age["years"] < 0:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Child date of birth cannot be in the future"
+        )
+
+    birth_order = existing_count + 1
+
+    child_id = (
+        f"CH-"
+        f"{pregnancy['patient_id']}-"
+        f"{pregnancy_id}-"
+        f"{birth_order}"
+    )
+
+    # Safety against accidental duplicate IDs.
+    existing_child = db.execute(
+        """
+        SELECT id
+        FROM children
+        WHERE child_id = ?
+        """,
+        (child_id,)
+    ).fetchone()
+
+    if existing_child:
+        db.close()
+        raise HTTPException(
+            status_code=409,
+            detail="Child record already exists"
+        )
+
+    db.execute(
+        """
+        INSERT INTO children (
+            child_id,
+            mother_patient_id,
+            pregnancy_id,
+            name,
+            date_of_birth,
+            sex,
+            birth_weight,
+            blood_group,
+            facility_id,
+            notes,
+            created_at
+        )
+        VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
+        )
+        """,
+        (
+            child_id,
+            pregnancy["patient_id"],
+            pregnancy_id,
+            data.name,
+            data.date_of_birth,
+            data.sex,
+            data.birth_weight,
+            data.blood_group,
+            pregnancy["facility_id"],
+            data.notes
+        )
+    )
+
+    db.commit()
+
+    child = db.execute(
+        """
+        SELECT *
+        FROM children
+        WHERE child_id = ?
+        """,
+        (child_id,)
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": (
+            f"Child #{birth_order} registered successfully"
+        ),
+        "child": dict(child)
+    }
+
+
+@app.get(
+    "/maternal/patients/{patient_id}/children"
+)
+async def get_patient_children(
+    patient_id: str,
+    actor_id: str
+):
+    db = get_db()
+
+    patient = get_patient(
+        db,
+        patient_id
+    )
+
+    if not patient:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found"
+        )
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=False
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    rows = db.execute(
+        """
+        SELECT
+            c.*,
+            mp.pregnancy_number
+        FROM children c
+        JOIN maternal_pregnancies mp
+            ON mp.id = c.pregnancy_id
+        WHERE c.mother_patient_id = ?
+        ORDER BY
+            c.date_of_birth DESC,
+            c.id DESC
+        """,
+        (patient_id,)
+    ).fetchall()
+
+    children = []
+
+    for row in rows:
+
+        child = dict(row)
+
+        age = child_age_from_dob(
+            child["date_of_birth"]
+        )
+
+        child["age"] = age
+
+        vaccine_counts = db.execute(
+            """
+            SELECT
+                COUNT(*) AS total,
+                SUM(
+                    CASE
+                        WHEN status = 'Completed'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS completed
+            FROM child_immunizations
+            WHERE child_id = ?
+            """,
+            (child["child_id"],)
+        ).fetchone()
+
+        total = int(
+            vaccine_counts["total"] or 0
+        )
+
+        completed = int(
+            vaccine_counts["completed"] or 0
+        )
+
+        child["immunization_summary"] = {
+            "total": total,
+            "completed": completed,
+            "pending": max(
+                total - completed,
+                0
+            )
+        }
+
+        children.append(child)
+
+    db.close()
+
+    return {
+        "success": True,
+        "children": children
+    }
+
+
+@app.get(
+    "/maternal/children/{child_id}"
+)
+async def get_child(
+    child_id: str,
+    actor_id: str
+):
+    db = get_db()
+
+    child = db.execute(
+        """
+        SELECT
+            c.*,
+            mp.pregnancy_number,
+            mp.lmp_date,
+            mp.edd_date,
+            mp.assigned_asha_user_id
+        FROM children c
+        JOIN maternal_pregnancies mp
+            ON mp.id = c.pregnancy_id
+        WHERE c.child_id = ?
+        LIMIT 1
+        """,
+        (child_id,)
+    ).fetchone()
+
+    if not child:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Child not found"
+        )
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        child["mother_patient_id"],
+        staff_write=False
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    result = dict(child)
+
+    result["age"] = child_age_from_dob(
+        child["date_of_birth"]
+    )
+
+    db.close()
+
+    return {
+        "success": True,
+        "child": result
+    }
+
+
+@app.patch(
+    "/maternal/children/{child_id}"
+)
+async def update_child(
+    child_id: str,
+    data: ChildUpdate,
+    actor_id: str
+):
+    db = get_db()
+
+    child = db.execute(
+        """
+        SELECT *
+        FROM children
+        WHERE child_id = ?
+        """,
+        (child_id,)
+    ).fetchone()
+
+    if not child:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Child not found"
+        )
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        child["mother_patient_id"],
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    new_name = (
+        data.name
+        if data.name is not None
+        else child["name"]
+    )
+
+    new_dob = (
+        data.date_of_birth
+        if data.date_of_birth is not None
+        else child["date_of_birth"]
+    )
+
+    new_sex = (
+        data.sex
+        if data.sex is not None
+        else child["sex"]
+    )
+
+    new_birth_weight = (
+        data.birth_weight
+        if data.birth_weight is not None
+        else child["birth_weight"]
+    )
+
+    new_blood_group = (
+        data.blood_group
+        if data.blood_group is not None
+        else child["blood_group"]
+    )
+
+    new_notes = (
+        data.notes
+        if data.notes is not None
+        else child["notes"]
+    )
+
+    if data.date_of_birth is not None:
+
+        age = child_age_from_dob(
+            data.date_of_birth
+        )
+
+        if not age:
+            db.close()
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid child date of birth"
+            )
+
+    db.execute(
+        """
+        UPDATE children
+        SET
+            name = ?,
+            date_of_birth = ?,
+            sex = ?,
+            birth_weight = ?,
+            blood_group = ?,
+            notes = ?
+        WHERE child_id = ?
+        """,
+        (
+            new_name,
+            new_dob,
+            new_sex,
+            new_birth_weight,
+            new_blood_group,
+            new_notes,
+            child_id
+        )
+    )
+
+    db.commit()
+
+    updated = db.execute(
+        """
+        SELECT *
+        FROM children
+        WHERE child_id = ?
+        """,
+        (child_id,)
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Child record updated successfully",
+        "child": dict(updated)
+    }
+
+
+# =========================================================
+# CHILD IMMUNIZATION
+# =========================================================
+
+@app.post(
+    "/maternal/children/{child_id}/immunizations"
+)
+async def create_child_immunization(
+    child_id: str,
+    data: ChildImmunizationCreate,
+    actor_id: str
+):
+    db = get_db()
+
+    child = db.execute(
+        """
+        SELECT *
+        FROM children
+        WHERE child_id = ?
+        """,
+        (child_id,)
+    ).fetchone()
+
+    if not child:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Child not found"
+        )
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        child["mother_patient_id"],
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    valid_statuses = {
+        "Pending",
+        "Completed",
+        "Missed",
+        "Not Due",
+        "Cancelled"
+    }
+
+    if data.status not in valid_statuses:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid child vaccination status"
+        )
+
+    db.execute(
+        """
+        INSERT INTO child_immunizations (
+            child_id,
+            vaccine_name,
+            dose,
+            scheduled_date,
+            administered_date,
+            status,
+            facility_id,
+            recorded_by,
+            notes,
+            created_at
+        )
+        VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
+        )
+        """,
+        (
+            child_id,
+            data.vaccine_name.strip(),
+            data.dose.strip(),
+            data.scheduled_date,
+            data.administered_date,
+            data.status,
+            child["facility_id"],
+            actor_id,
+            data.notes
+        )
+    )
+
+    db.commit()
+
+    vaccination = db.execute(
+        """
+        SELECT *
+        FROM child_immunizations
+        WHERE id = (
+            SELECT MAX(id)
+            FROM child_immunizations
+            WHERE child_id = ?
+        )
+        """,
+        (child_id,)
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Child vaccination recorded successfully",
+        "vaccination": dict(vaccination)
+    }
+
+
+@app.get(
+    "/maternal/children/{child_id}/immunizations"
+)
+async def get_child_immunizations(
+    child_id: str,
+    actor_id: str
+):
+    db = get_db()
+
+    child = db.execute(
+        """
+        SELECT *
+        FROM children
+        WHERE child_id = ?
+        """,
+        (child_id,)
+    ).fetchone()
+
+    if not child:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Child not found"
+        )
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        child["mother_patient_id"],
+        staff_write=False
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    rows = db.execute(
+        """
+        SELECT *
+        FROM child_immunizations
+        WHERE child_id = ?
+        ORDER BY
+            CASE
+                WHEN scheduled_date IS NULL THEN 1
+                ELSE 0
+            END,
+            scheduled_date ASC,
+            id ASC
+        """,
+        (child_id,)
+    ).fetchall()
+
+    summary = {
+        "total": len(rows),
+        "completed": 0,
+        "pending": 0,
+        "missed": 0,
+        "not_due": 0
+    }
+
+    for row in rows:
+
+        status = str(
+            row["status"] or ""
+        ).lower()
+
+        if status == "completed":
+            summary["completed"] += 1
+
+        elif status == "pending":
+            summary["pending"] += 1
+
+        elif status == "missed":
+            summary["missed"] += 1
+
+        elif status == "not due":
+            summary["not_due"] += 1
+
+    db.close()
+
+    return {
+        "success": True,
+        "summary": summary,
+        "immunizations": [
+            dict(row)
+            for row in rows
+        ]
+    }
+
+
+@app.patch(
+    "/maternal/child-immunizations/{immunization_id}"
+)
+async def update_child_immunization(
+    immunization_id: int,
+    data: ChildImmunizationUpdate,
+    actor_id: str
+):
+    db = get_db()
+
+    vaccination = db.execute(
+        """
+        SELECT *
+        FROM child_immunizations
+        WHERE id = ?
+        """,
+        (immunization_id,)
+    ).fetchone()
+
+    if not vaccination:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Child vaccination not found"
+        )
+
+    child = db.execute(
+        """
+        SELECT *
+        FROM children
+        WHERE child_id = ?
+        """,
+        (vaccination["child_id"],)
+    ).fetchone()
+
+    if not child:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Child record not found"
+        )
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        child["mother_patient_id"],
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    new_vaccine = (
+        data.vaccine_name
+        if data.vaccine_name is not None
+        else vaccination["vaccine_name"]
+    )
+
+    new_dose = (
+        data.dose
+        if data.dose is not None
+        else vaccination["dose"]
+    )
+
+    new_scheduled = (
+        data.scheduled_date
+        if data.scheduled_date is not None
+        else vaccination["scheduled_date"]
+    )
+
+    new_administered = (
+        data.administered_date
+        if data.administered_date is not None
+        else vaccination["administered_date"]
+    )
+
+    new_status = (
+        data.status
+        if data.status is not None
+        else vaccination["status"]
+    )
+
+    new_notes = (
+        data.notes
+        if data.notes is not None
+        else vaccination["notes"]
+    )
+
+    valid_statuses = {
+        "Pending",
+        "Completed",
+        "Missed",
+        "Not Due",
+        "Cancelled"
+    }
+
+    if new_status not in valid_statuses:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid child vaccination status"
+        )
+
+    db.execute(
+        """
+        UPDATE child_immunizations
+        SET
+            vaccine_name = ?,
+            dose = ?,
+            scheduled_date = ?,
+            administered_date = ?,
+            status = ?,
+            notes = ?
+        WHERE id = ?
+        """,
+        (
+            new_vaccine,
+            new_dose,
+            new_scheduled,
+            new_administered,
+            new_status,
+            new_notes,
+            immunization_id
+        )
+    )
+
+    db.commit()
+
+    updated = db.execute(
+        """
+        SELECT *
+        FROM child_immunizations
+        WHERE id = ?
+        """,
+        (immunization_id,)
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Child vaccination updated successfully",
+        "vaccination": dict(updated)
+    }
+
+
+# =========================================================
+# CHILD HEALTH / GROWTH VISITS
+# =========================================================
+
+@app.post(
+    "/maternal/children/{child_id}/health-visits"
+)
+async def create_child_health_visit(
+    child_id: str,
+    data: ChildHealthVisitCreate,
+    actor_id: str
+):
+    db = get_db()
+
+    child = db.execute(
+        """
+        SELECT *
+        FROM children
+        WHERE child_id = ?
+        """,
+        (child_id,)
+    ).fetchone()
+
+    if not child:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Child not found"
+        )
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        child["mother_patient_id"],
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    db.execute(
+        """
+        INSERT INTO child_health_visits (
+            child_id,
+            visit_date,
+            visit_type,
+            weight,
+            height,
+            developmental_notes,
+            findings,
+            referral_required,
+            facility_id,
+            recorded_by,
+            notes,
+            created_at
+        )
+        VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
+        )
+        """,
+        (
+            child_id,
+            data.visit_date,
+            data.visit_type,
+            data.weight,
+            data.height,
+            data.developmental_notes,
+            data.findings,
+            1 if data.referral_required else 0,
+            child["facility_id"],
+            actor_id,
+            data.notes
+        )
+    )
+
+    db.commit()
+
+    visit = db.execute(
+        """
+        SELECT *
+        FROM child_health_visits
+        WHERE id = (
+            SELECT MAX(id)
+            FROM child_health_visits
+            WHERE child_id = ?
+        )
+        """,
+        (child_id,)
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Child health visit recorded successfully",
+        "visit": dict(visit)
+    }
+
+
+@app.get(
+    "/maternal/children/{child_id}/health-visits"
+)
+async def get_child_health_visits(
+    child_id: str,
+    actor_id: str
+):
+    db = get_db()
+
+    child = db.execute(
+        """
+        SELECT *
+        FROM children
+        WHERE child_id = ?
+        """,
+        (child_id,)
+    ).fetchone()
+
+    if not child:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Child not found"
+        )
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        child["mother_patient_id"],
+        staff_write=False
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    rows = db.execute(
+        """
+        SELECT *
+        FROM child_health_visits
+        WHERE child_id = ?
+        ORDER BY visit_date DESC, id DESC
+        """,
+        (child_id,)
+    ).fetchall()
+
+    db.close()
+
+    return {
+        "success": True,
+        "visits": [
+            dict(row)
+            for row in rows
+        ]
+    }
+
+
+@app.patch(
+    "/maternal/child-health-visits/{visit_id}"
+)
+async def update_child_health_visit(
+    visit_id: int,
+    data: ChildHealthVisitUpdate,
+    actor_id: str
+):
+    db = get_db()
+
+    visit = db.execute(
+        """
+        SELECT *
+        FROM child_health_visits
+        WHERE id = ?
+        """,
+        (visit_id,)
+    ).fetchone()
+
+    if not visit:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Child health visit not found"
+        )
+
+    child = db.execute(
+        """
+        SELECT *
+        FROM children
+        WHERE child_id = ?
+        """,
+        (visit["child_id"],)
+    ).fetchone()
+
+    if not child:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Child record not found"
+        )
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        child["mother_patient_id"],
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    new_date = (
+        data.visit_date
+        if data.visit_date is not None
+        else visit["visit_date"]
+    )
+
+    new_type = (
+        data.visit_type
+        if data.visit_type is not None
+        else visit["visit_type"]
+    )
+
+    new_weight = (
+        data.weight
+        if data.weight is not None
+        else visit["weight"]
+    )
+
+    new_height = (
+        data.height
+        if data.height is not None
+        else visit["height"]
+    )
+
+    new_development = (
+        data.developmental_notes
+        if data.developmental_notes is not None
+        else visit["developmental_notes"]
+    )
+
+    new_findings = (
+        data.findings
+        if data.findings is not None
+        else visit["findings"]
+    )
+
+    new_referral = (
+        1 if data.referral_required else 0
+    ) if data.referral_required is not None else visit[
+        "referral_required"
+    ]
+
+    new_notes = (
+        data.notes
+        if data.notes is not None
+        else visit["notes"]
+    )
+
+    db.execute(
+        """
+        UPDATE child_health_visits
+        SET
+            visit_date = ?,
+            visit_type = ?,
+            weight = ?,
+            height = ?,
+            developmental_notes = ?,
+            findings = ?,
+            referral_required = ?,
+            notes = ?
+        WHERE id = ?
+        """,
+        (
+            new_date,
+            new_type,
+            new_weight,
+            new_height,
+            new_development,
+            new_findings,
+            new_referral,
+            new_notes,
+            visit_id
+        )
+    )
+
+    db.commit()
+
+    updated = db.execute(
+        """
+        SELECT *
+        FROM child_health_visits
+        WHERE id = ?
+        """,
+        (visit_id,)
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Child health visit updated successfully",
+        "visit": dict(updated)
+    }
+
+# =========================================================
+# MATERNAL & CHILD CARE — LINKED LAB REPORTS
+# =========================================================
+
+class MaternalChildLabCreate(BaseModel):
+    test_name: str
+    result: str
+    report_date: str
+    status: str = "Available"
+
+
+class MaternalChildLabUpdate(BaseModel):
+    test_name: Optional[str] = None
+    result: Optional[str] = None
+    report_date: Optional[str] = None
+    status: Optional[str] = None
+
+
+def check_lab_actor_access(
+    db,
+    patient_id: str,
+    actor_id: str,
+    staff_write: bool = False
+):
+    allowed, role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=staff_write
+    )
+
+    if not allowed:
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    return role
+
+
+@app.post(
+    "/maternal/pregnancies/{pregnancy_id}/labs"
+)
+async def create_pregnancy_lab(
+    pregnancy_id: int,
+    data: MaternalChildLabCreate,
+    actor_id: str
+):
+    db = get_db()
+
+    pregnancy = db.execute(
+        """
+        SELECT *
+        FROM maternal_pregnancies
+        WHERE id = ?
+        """,
+        (pregnancy_id,)
+    ).fetchone()
+
+    if not pregnancy:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Pregnancy record not found"
+        )
+
+    check_lab_actor_access(
+        db,
+        pregnancy["patient_id"],
+        actor_id,
+        staff_write=True
+    )
+
+    cursor = db.execute(
+        """
+        INSERT INTO lab_reports (
+            patient_id,
+            test_name,
+            result,
+            report_date,
+            status,
+            facility_id,
+            pregnancy_id
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            pregnancy["patient_id"],
+            data.test_name.strip(),
+            data.result.strip(),
+            data.report_date,
+            data.status,
+            pregnancy["facility_id"],
+            pregnancy_id
+        )
+    )
+
+    db.commit()
+
+    report = db.execute(
+        """
+        SELECT *
+        FROM lab_reports
+        WHERE id = ?
+        """,
+        (cursor.lastrowid,)
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Pregnancy lab report recorded successfully",
+        "lab": dict(report)
+    }
+
+
+@app.get(
+    "/maternal/pregnancies/{pregnancy_id}/labs"
+)
+async def get_pregnancy_labs(
+    pregnancy_id: int,
+    actor_id: str
+):
+    db = get_db()
+
+    pregnancy = db.execute(
+        """
+        SELECT *
+        FROM maternal_pregnancies
+        WHERE id = ?
+        """,
+        (pregnancy_id,)
+    ).fetchone()
+
+    if not pregnancy:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Pregnancy record not found"
+        )
+
+    check_lab_actor_access(
+        db,
+        pregnancy["patient_id"],
+        actor_id,
+        staff_write=False
+    )
+
+    rows = db.execute(
+        """
+        SELECT *
+        FROM lab_reports
+        WHERE patient_id = ?
+          AND pregnancy_id = ?
+        ORDER BY report_date DESC, id DESC
+        """,
+        (
+            pregnancy["patient_id"],
+            pregnancy_id
+        )
+    ).fetchall()
+
+    db.close()
+
+    return {
+        "success": True,
+        "labs": [
+            dict(row)
+            for row in rows
+        ]
+    }
+
+
+@app.post(
+    "/maternal/children/{child_id}/labs"
+)
+async def create_child_lab(
+    child_id: str,
+    data: MaternalChildLabCreate,
+    actor_id: str
+):
+    db = get_db()
+
+    child = db.execute(
+        """
+        SELECT *
+        FROM children
+        WHERE child_id = ?
+        """,
+        (child_id,)
+    ).fetchone()
+
+    if not child:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Child not found"
+        )
+
+    check_lab_actor_access(
+        db,
+        child["mother_patient_id"],
+        actor_id,
+        staff_write=True
+    )
+
+    cursor = db.execute(
+        """
+        INSERT INTO lab_reports (
+            patient_id,
+            test_name,
+            result,
+            report_date,
+            status,
+            facility_id,
+            child_id
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            child["mother_patient_id"],
+            data.test_name.strip(),
+            data.result.strip(),
+            data.report_date,
+            data.status,
+            child["facility_id"],
+            child_id
+        )
+    )
+
+    db.commit()
+
+    report = db.execute(
+        """
+        SELECT *
+        FROM lab_reports
+        WHERE id = ?
+        """,
+        (cursor.lastrowid,)
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Child lab report recorded successfully",
+        "lab": dict(report)
+    }
+
+
+@app.get(
+    "/maternal/children/{child_id}/labs"
+)
+async def get_child_labs(
+    child_id: str,
+    actor_id: str
+):
+    db = get_db()
+
+    child = db.execute(
+        """
+        SELECT *
+        FROM children
+        WHERE child_id = ?
+        """
+        ,
+        (child_id,)
+    ).fetchone()
+
+    if not child:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Child not found"
+        )
+
+    check_lab_actor_access(
+        db,
+        child["mother_patient_id"],
+        actor_id,
+        staff_write=False
+    )
+
+    rows = db.execute(
+        """
+        SELECT *
+        FROM lab_reports
+        WHERE patient_id = ?
+          AND child_id = ?
+        ORDER BY report_date DESC, id DESC
+        """,
+        (
+            child["mother_patient_id"],
+            child_id
+        )
+    ).fetchall()
+
+    db.close()
+
+    return {
+        "success": True,
+        "labs": [
+            dict(row)
+            for row in rows
+        ]
+    }
+
+
+@app.patch(
+    "/maternal/labs/{lab_id}"
+)
+async def update_maternal_child_lab(
+    lab_id: int,
+    data: MaternalChildLabUpdate,
+    actor_id: str
+):
+    db = get_db()
+
+    lab = db.execute(
+        """
+        SELECT *
+        FROM lab_reports
+        WHERE id = ?
+        """,
+        (lab_id,)
+    ).fetchone()
+
+    if not lab:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Lab report not found"
+        )
+
+    check_lab_actor_access(
+        db,
+        lab["patient_id"],
+        actor_id,
+        staff_write=True
+    )
+
+    new_test_name = (
+        data.test_name
+        if data.test_name is not None
+        else lab["test_name"]
+    )
+
+    new_result = (
+        data.result
+        if data.result is not None
+        else lab["result"]
+    )
+
+    new_report_date = (
+        data.report_date
+        if data.report_date is not None
+        else lab["report_date"]
+    )
+
+    new_status = (
+        data.status
+        if data.status is not None
+        else lab["status"]
+    )
+
+    db.execute(
+        """
+        UPDATE lab_reports
+        SET
+            test_name = ?,
+            result = ?,
+            report_date = ?,
+            status = ?
+        WHERE id = ?
+        """,
+        (
+            new_test_name,
+            new_result,
+            new_report_date,
+            new_status,
+            lab_id
+        )
+    )
+
+    db.commit()
+
+    updated = db.execute(
+        """
+        SELECT *
+        FROM lab_reports
+        WHERE id = ?
+        """,
+        (lab_id,)
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Lab report updated successfully",
+        "lab": dict(updated)
+    }
+
+# =========================================================
+# MATERNAL & CHILD CARE — FAMILY PLANNING
+# =========================================================
+
+class FamilyPlanningCreate(BaseModel):
+    pregnancy_id: Optional[int] = None
+    counselling_date: Optional[str] = None
+    methods_discussed: Optional[str] = None
+    method_selected: Optional[str] = None
+    follow_up_date: Optional[str] = None
+    status: str = "Counselling"
+    notes: Optional[str] = None
+
+
+class FamilyPlanningUpdate(BaseModel):
+    pregnancy_id: Optional[int] = None
+    counselling_date: Optional[str] = None
+    methods_discussed: Optional[str] = None
+    method_selected: Optional[str] = None
+    follow_up_date: Optional[str] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
+
+@app.post(
+    "/maternal/patients/{patient_id}/family-planning"
+)
+async def create_family_planning_record(
+    patient_id: str,
+    data: FamilyPlanningCreate,
+    actor_id: str
+):
+    db = get_db()
+
+    patient = get_patient(
+        db,
+        patient_id
+    )
+
+    if not patient:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found"
+        )
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    pregnancy_id = data.pregnancy_id
+
+    # If linked to a pregnancy, confirm that the
+    # pregnancy belongs to this patient.
+    if pregnancy_id:
+
+        pregnancy = db.execute(
+            """
+            SELECT id
+            FROM maternal_pregnancies
+            WHERE id = ?
+              AND patient_id = ?
+            """,
+            (
+                pregnancy_id,
+                patient_id
+            )
+        ).fetchone()
+
+        if not pregnancy:
+            db.close()
+            raise HTTPException(
+                status_code=404,
+                detail="Pregnancy does not belong to this patient"
+            )
+
+    valid_statuses = {
+        "Counselling",
+        "Method Selected",
+        "Follow-up Due",
+        "Completed",
+        "Declined",
+        "Deferred"
+    }
+
+    if data.status not in valid_statuses:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid family planning status"
+        )
+
+    cursor = db.execute(
+        """
+        INSERT INTO family_planning_records (
+            patient_id,
+            pregnancy_id,
+            counselling_date,
+            methods_discussed,
+            method_selected,
+            follow_up_date,
+            status,
+            notes,
+            recorded_by,
+            facility_id,
+            created_at
+        )
+        VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
+        )
+        """,
+        (
+            patient_id,
+            pregnancy_id,
+            data.counselling_date,
+            data.methods_discussed,
+            data.method_selected,
+            data.follow_up_date,
+            data.status,
+            data.notes,
+            actor_id,
+            patient["facility_id"]
+        )
+    )
+
+    db.commit()
+
+    record = db.execute(
+        """
+        SELECT
+            fp.*,
+            u.name AS recorded_by_name
+        FROM family_planning_records fp
+        LEFT JOIN users u
+            ON u.user_id = fp.recorded_by
+        WHERE fp.id = ?
+        """,
+        (
+            cursor.lastrowid,
+        )
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Family planning record saved successfully",
+        "record": dict(record)
+    }
+
+
+@app.get(
+    "/maternal/patients/{patient_id}/family-planning"
+)
+async def get_family_planning_records(
+    patient_id: str,
+    actor_id: str
+):
+    db = get_db()
+
+    patient = get_patient(
+        db,
+        patient_id
+    )
+
+    if not patient:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found"
+        )
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=False
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    rows = db.execute(
+        """
+        SELECT
+            fp.*,
+            u.name AS recorded_by_name
+        FROM family_planning_records fp
+        LEFT JOIN users u
+            ON u.user_id = fp.recorded_by
+        WHERE fp.patient_id = ?
+        ORDER BY
+            fp.counselling_date DESC,
+            fp.id DESC
+        """,
+        (
+            patient_id,
+        )
+    ).fetchall()
+
+    db.close()
+
+    return {
+        "success": True,
+        "records": [
+            dict(row)
+            for row in rows
+        ]
+    }
+
+
+@app.patch(
+    "/maternal/family-planning/{record_id}"
+)
+async def update_family_planning_record(
+    record_id: int,
+    data: FamilyPlanningUpdate,
+    actor_id: str
+):
+    db = get_db()
+
+    record = db.execute(
+        """
+        SELECT *
+        FROM family_planning_records
+        WHERE id = ?
+        """,
+        (
+            record_id,
+        )
+    ).fetchone()
+
+    if not record:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Family planning record not found"
+        )
+
+    patient_id = record["patient_id"]
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    new_pregnancy_id = (
+        data.pregnancy_id
+        if data.pregnancy_id is not None
+        else record["pregnancy_id"]
+    )
+
+    if new_pregnancy_id:
+
+        pregnancy = db.execute(
+            """
+            SELECT id
+            FROM maternal_pregnancies
+            WHERE id = ?
+              AND patient_id = ?
+            """,
+            (
+                new_pregnancy_id,
+                patient_id
+            )
+        ).fetchone()
+
+        if not pregnancy:
+            db.close()
+            raise HTTPException(
+                status_code=404,
+                detail="Pregnancy does not belong to this patient"
+            )
+
+    new_counselling_date = (
+        data.counselling_date
+        if data.counselling_date is not None
+        else record["counselling_date"]
+    )
+
+    new_methods_discussed = (
+        data.methods_discussed
+        if data.methods_discussed is not None
+        else record["methods_discussed"]
+    )
+
+    new_method_selected = (
+        data.method_selected
+        if data.method_selected is not None
+        else record["method_selected"]
+    )
+
+    new_follow_up_date = (
+        data.follow_up_date
+        if data.follow_up_date is not None
+        else record["follow_up_date"]
+    )
+
+    new_status = (
+        data.status
+        if data.status is not None
+        else record["status"]
+    )
+
+    new_notes = (
+        data.notes
+        if data.notes is not None
+        else record["notes"]
+    )
+
+    valid_statuses = {
+        "Counselling",
+        "Method Selected",
+        "Follow-up Due",
+        "Completed",
+        "Declined",
+        "Deferred"
+    }
+
+    if new_status not in valid_statuses:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid family planning status"
+        )
+
+    db.execute(
+        """
+        UPDATE family_planning_records
+        SET
+            pregnancy_id = ?,
+            counselling_date = ?,
+            methods_discussed = ?,
+            method_selected = ?,
+            follow_up_date = ?,
+            status = ?,
+            notes = ?
+        WHERE id = ?
+        """,
+        (
+            new_pregnancy_id,
+            new_counselling_date,
+            new_methods_discussed,
+            new_method_selected,
+            new_follow_up_date,
+            new_status,
+            new_notes,
+            record_id
+        )
+    )
+
+    db.commit()
+
+    updated = db.execute(
+        """
+        SELECT *
+        FROM family_planning_records
+        WHERE id = ?
+        """,
+        (
+            record_id,
+        )
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Family planning record updated successfully",
+        "record": dict(updated)
+    }
+
+# =========================================================
+# MATERNAL & CHILD CARE — GOVERNMENT SCHEMES
+# =========================================================
+
+class SchemeRecordCreate(BaseModel):
+    pregnancy_id: Optional[int] = None
+    scheme_name: str
+    eligibility_status: str = "To Verify"
+    application_status: str = "Not Applied"
+    application_date: Optional[str] = None
+    approval_date: Optional[str] = None
+    benefit_received_date: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class SchemeRecordUpdate(BaseModel):
+    pregnancy_id: Optional[int] = None
+    scheme_name: Optional[str] = None
+    eligibility_status: Optional[str] = None
+    application_status: Optional[str] = None
+    application_date: Optional[str] = None
+    approval_date: Optional[str] = None
+    benefit_received_date: Optional[str] = None
+    notes: Optional[str] = None
+
+
+@app.post(
+    "/maternal/patients/{patient_id}/schemes"
+)
+async def create_scheme_record(
+    patient_id: str,
+    data: SchemeRecordCreate,
+    actor_id: str
+):
+    db = get_db()
+
+    patient = get_patient(
+        db,
+        patient_id
+    )
+
+    if not patient:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found"
+        )
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    pregnancy_id = data.pregnancy_id
+
+    if pregnancy_id:
+
+        pregnancy = db.execute(
+            """
+            SELECT id
+            FROM maternal_pregnancies
+            WHERE id = ?
+              AND patient_id = ?
+            """,
+            (
+                pregnancy_id,
+                patient_id
+            )
+        ).fetchone()
+
+        if not pregnancy:
+            db.close()
+            raise HTTPException(
+                status_code=404,
+                detail="Pregnancy does not belong to this patient"
+            )
+
+    valid_eligibility = {
+        "To Verify",
+        "Eligible",
+        "Not Eligible",
+        "Under Review"
+    }
+
+    valid_application = {
+        "Not Applied",
+        "Application Started",
+        "Applied",
+        "Approved",
+        "Rejected",
+        "Benefit Received",
+        "Closed"
+    }
+
+    if data.eligibility_status not in valid_eligibility:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid eligibility status"
+        )
+
+    if data.application_status not in valid_application:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid application status"
+        )
+
+    cursor = db.execute(
+        """
+        INSERT INTO scheme_records (
+            patient_id,
+            pregnancy_id,
+            scheme_name,
+            eligibility_status,
+            application_status,
+            application_date,
+            approval_date,
+            benefit_received_date,
+            notes,
+            recorded_by,
+            facility_id,
+            created_at
+        )
+        VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
+        )
+        """,
+        (
+            patient_id,
+            pregnancy_id,
+            data.scheme_name.strip(),
+            data.eligibility_status,
+            data.application_status,
+            data.application_date,
+            data.approval_date,
+            data.benefit_received_date,
+            data.notes,
+            actor_id,
+            patient["facility_id"]
+        )
+    )
+
+    db.commit()
+
+    record = db.execute(
+        """
+        SELECT
+            sr.*,
+            u.name AS recorded_by_name
+        FROM scheme_records sr
+        LEFT JOIN users u
+            ON u.user_id = sr.recorded_by
+        WHERE sr.id = ?
+        """,
+        (
+            cursor.lastrowid,
+        )
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Government scheme record saved successfully",
+        "scheme": dict(record)
+    }
+
+
+@app.get(
+    "/maternal/patients/{patient_id}/schemes"
+)
+async def get_scheme_records(
+    patient_id: str,
+    actor_id: str
+):
+    db = get_db()
+
+    patient = get_patient(
+        db,
+        patient_id
+    )
+
+    if not patient:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found"
+        )
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=False
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    rows = db.execute(
+        """
+        SELECT
+            sr.*,
+            u.name AS recorded_by_name
+        FROM scheme_records sr
+        LEFT JOIN users u
+            ON u.user_id = sr.recorded_by
+        WHERE sr.patient_id = ?
+        ORDER BY
+            sr.id DESC
+        """,
+        (
+            patient_id,
+        )
+    ).fetchall()
+
+    summary = {
+        "total": len(rows),
+        "eligible": 0,
+        "applied": 0,
+        "approved": 0,
+        "benefit_received": 0,
+        "needs_action": 0
+    }
+
+    for row in rows:
+
+        eligibility = str(
+            row["eligibility_status"] or ""
+        )
+
+        application = str(
+            row["application_status"] or ""
+        )
+
+        if eligibility == "Eligible":
+            summary["eligible"] += 1
+
+        if application in {
+            "Applied",
+            "Application Started"
+        }:
+            summary["applied"] += 1
+
+        if application == "Approved":
+            summary["approved"] += 1
+
+        if application == "Benefit Received":
+            summary["benefit_received"] += 1
+
+        if (
+            eligibility in {
+                "Eligible",
+                "Under Review"
+            }
+            and application not in {
+                "Benefit Received",
+                "Closed"
+            }
+        ):
+            summary["needs_action"] += 1
+
+    db.close()
+
+    return {
+        "success": True,
+        "summary": summary,
+        "schemes": [
+            dict(row)
+            for row in rows
+        ]
+    }
+
+
+@app.patch(
+    "/maternal/schemes/{scheme_id}"
+)
+async def update_scheme_record(
+    scheme_id: int,
+    data: SchemeRecordUpdate,
+    actor_id: str
+):
+    db = get_db()
+
+    record = db.execute(
+        """
+        SELECT *
+        FROM scheme_records
+        WHERE id = ?
+        """,
+        (
+            scheme_id,
+        )
+    ).fetchone()
+
+    if not record:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Government scheme record not found"
+        )
+
+    patient_id = record["patient_id"]
+
+    allowed, actor_role, reason = maternal_actor_access(
+        db,
+        actor_id,
+        patient_id,
+        staff_write=True
+    )
+
+    if not allowed:
+        db.close()
+        raise HTTPException(
+            status_code=403,
+            detail=reason
+        )
+
+    new_pregnancy_id = (
+        data.pregnancy_id
+        if data.pregnancy_id is not None
+        else record["pregnancy_id"]
+    )
+
+    if new_pregnancy_id:
+
+        pregnancy = db.execute(
+            """
+            SELECT id
+            FROM maternal_pregnancies
+            WHERE id = ?
+              AND patient_id = ?
+            """,
+            (
+                new_pregnancy_id,
+                patient_id
+            )
+        ).fetchone()
+
+        if not pregnancy:
+            db.close()
+            raise HTTPException(
+                status_code=404,
+                detail="Pregnancy does not belong to this patient"
+            )
+
+    new_scheme_name = (
+        data.scheme_name
+        if data.scheme_name is not None
+        else record["scheme_name"]
+    )
+
+    new_eligibility = (
+        data.eligibility_status
+        if data.eligibility_status is not None
+        else record["eligibility_status"]
+    )
+
+    new_application = (
+        data.application_status
+        if data.application_status is not None
+        else record["application_status"]
+    )
+
+    new_application_date = (
+        data.application_date
+        if data.application_date is not None
+        else record["application_date"]
+    )
+
+    new_approval_date = (
+        data.approval_date
+        if data.approval_date is not None
+        else record["approval_date"]
+    )
+
+    new_benefit_date = (
+        data.benefit_received_date
+        if data.benefit_received_date is not None
+        else record["benefit_received_date"]
+    )
+
+    new_notes = (
+        data.notes
+        if data.notes is not None
+        else record["notes"]
+    )
+
+    valid_eligibility = {
+        "To Verify",
+        "Eligible",
+        "Not Eligible",
+        "Under Review"
+    }
+
+    valid_application = {
+        "Not Applied",
+        "Application Started",
+        "Applied",
+        "Approved",
+        "Rejected",
+        "Benefit Received",
+        "Closed"
+    }
+
+    if new_eligibility not in valid_eligibility:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid eligibility status"
+        )
+
+    if new_application not in valid_application:
+        db.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid application status"
+        )
+
+    db.execute(
+        """
+        UPDATE scheme_records
+        SET
+            pregnancy_id = ?,
+            scheme_name = ?,
+            eligibility_status = ?,
+            application_status = ?,
+            application_date = ?,
+            approval_date = ?,
+            benefit_received_date = ?,
+            notes = ?
+        WHERE id = ?
+        """,
+        (
+            new_pregnancy_id,
+            new_scheme_name,
+            new_eligibility,
+            new_application,
+            new_application_date,
+            new_approval_date,
+            new_benefit_date,
+            new_notes,
+            scheme_id
+        )
+    )
+
+    db.commit()
+
+    updated = db.execute(
+        """
+        SELECT *
+        FROM scheme_records
+        WHERE id = ?
+        """,
+        (
+            scheme_id,
+        )
+    ).fetchone()
+
+    db.close()
+
+    return {
+        "success": True,
+        "message": "Government scheme record updated successfully",
+        "scheme": dict(updated)
+    }
 
 
 # =========================================================

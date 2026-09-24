@@ -5139,3 +5139,359 @@ textarea.form-control {
     height: 40px;
   }
 }
+
+/* =====================================================
+   DWIT MATERNAL & CHILD CARE — ANC
+===================================================== */
+
+.maternal-module-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+  margin-bottom: 22px;
+}
+
+.maternal-module-header h3 {
+  margin: 6px 0 6px;
+  font-size: 1.5rem;
+}
+
+.maternal-module-header p {
+  margin: 0;
+  opacity: 0.7;
+  line-height: 1.5;
+}
+
+.maternal-anc-progress {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 20px;
+  border-radius: 16px;
+  margin-bottom: 20px;
+  background: rgba(28, 120, 112, 0.07);
+  border: 1px solid rgba(28, 120, 112, 0.13);
+}
+
+.maternal-progress-number {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: #1c7870;
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.maternal-anc-progress strong {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.maternal-anc-progress span {
+  display: block;
+  opacity: 0.7;
+  font-size: 0.9rem;
+}
+
+.maternal-anc-timeline {
+  display: grid;
+  gap: 12px;
+}
+
+.maternal-anc-item {
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  gap: 14px;
+  padding: 17px;
+  border-radius: 17px;
+  border: 1px solid rgba(20, 60, 60, 0.11);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.maternal-anc-item.completed {
+  border-left: 4px solid #1c7870;
+}
+
+.maternal-anc-item.pending {
+  border-left: 4px solid #d99b24;
+}
+
+.maternal-anc-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  background: rgba(28, 120, 112, 0.1);
+  color: #1c7870;
+}
+
+.maternal-anc-item.pending .maternal-anc-number {
+  background: rgba(217, 155, 36, 0.12);
+  color: #9c6f0b;
+}
+
+.maternal-anc-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.maternal-anc-top strong {
+  font-size: 1.05rem;
+}
+
+.maternal-anc-top > span:not(.maternal-status-pill) {
+  opacity: 0.7;
+  font-size: 0.88rem;
+}
+
+.maternal-status-pill {
+  margin-left: auto;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.maternal-status-pill.done {
+  background: rgba(40, 140, 90, 0.11);
+  color: #287b50;
+}
+
+.maternal-status-pill.due {
+  background: rgba(217, 155, 36, 0.13);
+  color: #986e0b;
+}
+
+.maternal-anc-details {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-size: 0.87rem;
+  opacity: 0.78;
+}
+
+.maternal-anc-empty {
+  margin-top: 8px;
+  opacity: 0.65;
+  font-size: 0.9rem;
+}
+
+.maternal-warning {
+  display: inline-flex;
+  margin-top: 10px;
+  margin-right: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(190, 70, 70, 0.08);
+  color: #a13d3d;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.maternal-form-container {
+  margin-top: 20px;
+  padding: 20px;
+  border-radius: 18px;
+  background: rgba(247, 251, 250, 0.95);
+  border: 1px solid rgba(28, 120, 112, 0.12);
+}
+
+.maternal-form-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin-bottom: 18px;
+}
+
+.maternal-record-form label {
+  display: block;
+  margin-bottom: 14px;
+  font-weight: 650;
+  font-size: 0.88rem;
+}
+
+.maternal-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.maternal-record-form input,
+.maternal-record-form select,
+.maternal-record-form textarea {
+  display: block;
+  width: 100%;
+  margin-top: 7px;
+  padding: 12px 13px;
+  border-radius: 11px;
+  border: 1px solid rgba(20, 60, 60, 0.14);
+  background: #fff;
+  font: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.maternal-record-form input:focus,
+.maternal-record-form select:focus,
+.maternal-record-form textarea:focus {
+  border-color: rgba(28, 120, 112, 0.5);
+  box-shadow: 0 0 0 3px rgba(28, 120, 112, 0.08);
+}
+
+.maternal-form-checks {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: 4px 0 16px;
+}
+
+.maternal-form-checks label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.maternal-form-checks input {
+  width: auto;
+  margin: 0;
+}
+
+.maternal-form-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
+  .maternal-module-header {
+    flex-direction: column;
+  }
+
+  .maternal-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .maternal-status-pill {
+    margin-left: 0;
+  }
+
+  .maternal-anc-details {
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+
+/* =====================================================
+   DWIT MATERNAL CARE — PREGNANCY FORM
+===================================================== */
+
+.maternal-form-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(10, 25, 35, 0.48);
+  backdrop-filter: blur(8px);
+}
+
+.maternal-form-modal {
+  width: min(760px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(20, 60, 60, 0.1);
+}
+
+.maternal-form-modal-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 26px 28px 20px;
+  border-bottom: 1px solid rgba(20, 60, 60, 0.08);
+}
+
+.maternal-form-modal-header h3 {
+  margin: 7px 0 7px;
+  font-size: 1.5rem;
+}
+
+.maternal-form-modal-header p {
+  margin: 0;
+  max-width: 580px;
+  line-height: 1.5;
+  opacity: 0.68;
+}
+
+.maternal-form-modal .close-btn {
+  flex: 0 0 auto;
+}
+
+.maternal-form-modal .maternal-record-form {
+  padding: 24px 28px 28px;
+}
+
+.maternal-field-optional {
+  margin-left: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.55;
+}
+
+.maternal-rh-info {
+  margin: 8px 0 20px;
+  padding: 13px 15px;
+  border-radius: 12px;
+  background: rgba(28, 120, 112, 0.06);
+  border: 1px solid rgba(28, 120, 112, 0.12);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: #315b58;
+}
+
+.maternal-form-overlay
+  .maternal-record-form
+  input[type="date"] {
+  color: #263838;
+}
+
+.maternal-form-overlay
+  .maternal-record-form
+  select {
+  cursor: pointer;
+}
+
+@media (max-width: 720px) {
+  .maternal-form-overlay {
+    padding: 12px;
+    align-items: flex-end;
+  }
+
+  .maternal-form-modal {
+    max-height: 94vh;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .maternal-form-modal-header {
+    padding: 20px;
+  }
+
+  .maternal-form-modal .maternal-record-form {
+    padding: 20px;
+  }
+}

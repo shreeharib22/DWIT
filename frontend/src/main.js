@@ -4848,8 +4848,2086 @@ let diagnostics = []
     )
   }
 
+// =====================================================
+// DWIT MATERNAL & CHILD CARE CENTER
+// =====================================================
+
+async function openMaternalChildCareCenter() {
+
+  const existing =
+    document.querySelector(
+      '#maternalChildCareOverlay'
+    )
+
+  if (existing) {
+    existing.remove()
+  }
+
+  const overlay =
+    document.createElement('div')
+
+  overlay.id =
+    'maternalChildCareOverlay'
+
+  overlay.className =
+    'maternal-child-care-overlay'
+
+  overlay.innerHTML = `
+    <div class="maternal-child-care-modal">
+
+      <div class="maternal-care-header">
+
+        <div>
+          <div class="dashboard-kicker">
+            DWIT · MATERNAL & CHILD CARE
+          </div>
+
+          <h2>
+            Pregnancy to 6 Years
+          </h2>
+
+          <p>
+            Track pregnancy, ANC, ASHA visits, delivery,
+            postnatal care and every child under 6.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="modal close-btn"
+          id="closeMaternalChildCare"
+        >
+          ×
+        </button>
+
+      </div>
+
+      <div class="maternal-care-search">
+
+        <div>
+          <label for="maternalPatientSearch">
+            Select Patient
+          </label>
+
+          <input
+            id="maternalPatientSearch"
+            type="text"
+            placeholder="Search patient by name, ID or phone"
+            autocomplete="off"
+          >
+        </div>
+
+        <button
+          type="button"
+          class="primary-action"
+          id="maternalSearchPatientBtn"
+        >
+          Search
+        </button>
+
+      </div>
+
+      <div
+        id="maternalPatientResults"
+        class="maternal-patient-results"
+      ></div>
+
+      <div
+        id="maternalCareContent"
+        class="maternal-care-content"
+      >
+
+        <div class="maternal-care-empty">
+
+          <div class="maternal-care-empty-icon">
+            👩‍🍼
+          </div>
+
+          <h3>
+            Select a patient
+          </h3>
+
+          <p>
+            Search for a patient to open their complete
+            maternal and child care journey.
+          </p>
+
+        </div>
+
+      </div>
+
+    </div>
+  `
+
+  document.body.appendChild(
+    overlay
+  )
+
+  document
+    .querySelector(
+      '#closeMaternalChildCare'
+    )
+    ?.addEventListener(
+      'click',
+      () => overlay.remove()
+    )
+
+  overlay.addEventListener(
+    'click',
+    event => {
+
+      if (event.target === overlay) {
+        overlay.remove()
+      }
+
+    }
+  )
+
+  const searchInput =
+    document.querySelector(
+      '#maternalPatientSearch'
+    )
+
+  const searchButton =
+    document.querySelector(
+      '#maternalSearchPatientBtn'
+    )
+
+  const resultsBox =
+    document.querySelector(
+      '#maternalPatientResults'
+    )
+
+  async function searchMaternalPatients() {
+
+    const query =
+      searchInput?.value?.trim()
+
+    if (!query) {
+
+      if (resultsBox) {
+        resultsBox.innerHTML = `
+          <div class="maternal-search-message">
+            Enter a patient name, ID or phone number.
+          </div>
+        `
+      }
+
+      return
+    }
+
+    if (resultsBox) {
+      resultsBox.innerHTML = `
+        <div class="maternal-search-message">
+          Searching patients...
+        </div>
+      `
+    }
+
+    try {
+
+      const result =
+        await apiRequest(
+          `/patients/search?q=${encodeURIComponent(query)}`
+        )
+
+      const patients =
+        result?.patients ||
+        result?.results ||
+        []
+
+      if (!patients.length) {
+
+        if (resultsBox) {
+          resultsBox.innerHTML = `
+            <div class="maternal-search-message">
+              No matching patients found.
+            </div>
+          `
+        }
+
+        return
+      }
+
+      if (resultsBox) {
+
+        resultsBox.innerHTML = `
+          <div class="maternal-patient-list">
+
+            ${patients
+              .map(
+                patient => `
+                  <button
+                    type="button"
+                    class="maternal-patient-result"
+                    data-patient-id="${escapeHtml(
+                      patient.patient_id ||
+                      ''
+                    )}"
+                  >
+
+                    <strong>
+                      ${escapeHtml(
+                        patient.name ||
+                        'Unnamed Patient'
+                      )}
+                    </strong>
+
+                    <span>
+                      ID:
+                      ${escapeHtml(
+                        patient.patient_id ||
+                        '—'
+                      )}
+                    </span>
+
+                  </button>
+                `
+              )
+              .join('')
+            }
+
+          </div>
+        `
+      }
+
+      document
+        .querySelectorAll(
+          '.maternal-patient-result'
+        )
+        .forEach(
+          button => {
+
+            button.addEventListener(
+              'click',
+              () => {
+
+                const patientId =
+                  button.dataset.patientId
+
+                if (patientId) {
+                  loadMaternalPatient(
+                    patientId
+                  )
+                }
+
+              }
+            )
+
+          }
+        )
+
+    } catch (error) {
+
+      console.error(
+        'Maternal patient search:',
+        error
+      )
+
+      if (resultsBox) {
+        resultsBox.innerHTML = `
+          <div class="maternal-search-message error">
+            Unable to search patients right now.
+          </div>
+        `
+      }
+
+    }
+  }
+
+  async function loadMaternalPatient(
+    patientId
+  ) {
+
+    const content =
+      document.querySelector(
+        '#maternalCareContent'
+      )
+
+    if (!content) {
+      return
+    }
+
+    if (resultsBox) {
+      resultsBox.innerHTML = ''
+    }
+
+    content.innerHTML = `
+      <div class="maternal-care-loading">
+        Loading maternal & child records...
+      </div>
+    `
+
+    try {
+
+      const pregnancyResult =
+        await apiRequest(
+          `/maternal/patients/${encodeURIComponent(
+            patientId
+          )}/pregnancies?actor_id=${encodeURIComponent(
+            getCurrentActorId()
+          )}`
+        )
+
+      const childResult =
+        await apiRequest(
+          `/maternal/patients/${encodeURIComponent(
+            patientId
+          )}/children?actor_id=${encodeURIComponent(
+            getCurrentActorId()
+          )}`
+        )
+
+      const pregnancies =
+        pregnancyResult?.pregnancies ||
+        []
+
+      const children =
+        childResult?.children ||
+        []
+
+      const activePregnancy =
+        pregnancies.find(
+          pregnancy =>
+            pregnancy.status === 'Active'
+        ) ||
+        pregnancies[0] ||
+        null
+
+      content.innerHTML =
+        renderMaternalPatientOverview(
+          patientId,
+          activePregnancy,
+          pregnancies,
+          children
+        )
+
+      wireMaternalPatientActions(
+        patientId
+      )
+
+    } catch (error) {
+
+      console.error(
+        'Maternal patient loading:',
+        error
+      )
+
+      content.innerHTML = `
+        <div class="maternal-care-empty">
+
+          <div class="maternal-care-empty-icon">
+            ⚠️
+          </div>
+
+          <h3>
+            Unable to load records
+          </h3>
+
+          <p>
+            ${escapeHtml(
+              error?.message ||
+              'Please try again.'
+            )}
+          </p>
+
+        </div>
+      `
+
+    }
+  }
+
+  function renderMaternalPatientOverview(
+    patientId,
+    activePregnancy,
+    pregnancies,
+    children
+  ) {
+
+    const pregnancy =
+      activePregnancy
+
+    const completedANC =
+      pregnancy
+        ? '0'
+        : '—'
+
+    const pregnancyNumber =
+      pregnancy?.pregnancy_number ||
+      '—'
+
+    const riskStatus =
+      pregnancy?.risk_status ||
+      'Not registered'
+
+    const ashaName =
+      pregnancy?.assigned_asha_name ||
+      'Not assigned'
+
+    return `
+
+      <div class="maternal-patient-overview">
+
+        <div class="maternal-patient-hero">
+
+          <div>
+
+            <div class="dashboard-kicker">
+              MATERNAL & CHILD CARE
+            </div>
+
+            <h3>
+              Complete Care Journey
+            </h3>
+
+            <p>
+              Patient:
+              <strong>
+                ${escapeHtml(patientId)}
+              </strong>
+            </p>
+
+          </div>
+
+          <div class="maternal-hero-actions">
+
+            <button
+              type="button"
+              class="secondary-action"
+              id="maternalAddPregnancyBtn"
+            >
+              + Record Pregnancy
+            </button>
+
+          </div>
+
+        </div>
+
+        ${
+          pregnancy
+            ? `
+              <div class="maternal-summary-grid">
+
+                <div class="maternal-summary-card">
+                  <span>Pregnancy</span>
+                  <strong>
+                    #${escapeHtml(
+                      String(pregnancyNumber)
+                    )}
+                  </strong>
+                </div>
+
+                <div class="maternal-summary-card">
+                  <span>EDD</span>
+                  <strong>
+                    ${escapeHtml(
+                      pregnancy.edd_date ||
+                      'Not recorded'
+                    )}
+                  </strong>
+                </div>
+
+                <div class="maternal-summary-card">
+                  <span>ANC</span>
+                  <strong>
+                    ${completedANC} / 4
+                  </strong>
+                </div>
+
+                <div class="maternal-summary-card">
+                  <span>Assigned ASHA</span>
+                  <strong>
+                    ${escapeHtml(
+                      ashaName
+                    )}
+                  </strong>
+                </div>
+
+                <div class="maternal-summary-card">
+                  <span>Risk</span>
+                  <strong>
+                    ${escapeHtml(
+                      riskStatus
+                    )}
+                  </strong>
+                </div>
+
+              </div>
+            `
+            : `
+              <div class="maternal-care-empty">
+                <div class="maternal-care-empty-icon">
+                  👩‍🍼
+                </div>
+
+                <h3>
+                  No pregnancy currently registered
+                </h3>
+
+                <p>
+                  An authorized ASHA worker or doctor
+                  can register a pregnancy.
+                </p>
+
+                <button
+                  type="button"
+                  class="primary-action"
+                  id="maternalAddPregnancyBtn"
+                >
+                  + Record Pregnancy
+                </button>
+              </div>
+            `
+        }
+
+        <div class="maternal-care-tabs">
+
+          <button
+            type="button"
+            class="maternal-care-tab active"
+            data-maternal-tab="overview"
+          >
+            Overview
+          </button>
+
+          <button
+            type="button"
+            class="maternal-care-tab"
+            data-maternal-tab="anc"
+          >
+            ANC Visits
+          </button>
+
+          <button
+            type="button"
+            class="maternal-care-tab"
+            data-maternal-tab="home"
+          >
+            ASHA Home Visits
+          </button>
+
+          <button
+            type="button"
+            class="maternal-care-tab"
+            data-maternal-tab="vaccines"
+          >
+            Vaccinations
+          </button>
+
+          <button
+            type="button"
+            class="maternal-care-tab"
+            data-maternal-tab="labs"
+          >
+            Lab Reports
+          </button>
+
+          <button
+            type="button"
+            class="maternal-care-tab"
+            data-maternal-tab="delivery"
+          >
+            Delivery
+          </button>
+
+          <button
+            type="button"
+            class="maternal-care-tab"
+            data-maternal-tab="postnatal"
+          >
+            Postnatal
+          </button>
+
+          <button
+            type="button"
+            class="maternal-care-tab"
+            data-maternal-tab="children"
+          >
+            Children 0–6
+          </button>
+
+          <button
+            type="button"
+            class="maternal-care-tab"
+            data-maternal-tab="family"
+          >
+            Family Planning
+          </button>
+
+          <button
+            type="button"
+            class="maternal-care-tab"
+            data-maternal-tab="schemes"
+          >
+            Schemes
+          </button>
+
+        </div>
+
+        <div
+          id="maternalTabContent"
+          class="maternal-tab-content"
+        >
+
+          <div class="maternal-timeline">
+
+            <div class="maternal-timeline-title">
+              Mother → Baby Care Journey
+            </div>
+
+            <div class="maternal-journey">
+
+              <div class="journey-step completed">
+                <span>✓</span>
+                <strong>Pregnancy</strong>
+              </div>
+
+              <div class="journey-line"></div>
+
+              <div class="journey-step">
+                <span>2/4</span>
+                <strong>ANC</strong>
+              </div>
+
+              <div class="journey-line"></div>
+
+              <div class="journey-step">
+                <span>→</span>
+                <strong>ASHA Visits</strong>
+              </div>
+
+              <div class="journey-line"></div>
+
+              <div class="journey-step">
+                <span>○</span>
+                <strong>Delivery</strong>
+              </div>
+
+              <div class="journey-line"></div>
+
+              <div class="journey-step">
+                <span>○</span>
+                <strong>Postnatal</strong>
+              </div>
+
+              <div class="journey-line"></div>
+
+              <div class="journey-step">
+                <span>👶</span>
+                <strong>Children 0–6</strong>
+              </div>
+
+            </div>
+
+          </div>
+
+          <div class="maternal-section-grid">
+
+            <div class="maternal-section-card">
+              <div class="maternal-card-icon">
+                🩺
+              </div>
+
+              <h4>
+                ANC Tracking
+              </h4>
+
+              <p>
+                Four antenatal care milestones,
+                clinical observations and referrals.
+              </p>
+
+              <button
+                type="button"
+                class="secondary-action maternal-tab-jump"
+                data-jump-tab="anc"
+              >
+                Open ANC
+              </button>
+            </div>
+
+            <div class="maternal-section-card">
+              <div class="maternal-card-icon">
+                🏠
+              </div>
+
+              <h4>
+                ASHA Home Visits
+              </h4>
+
+              <p>
+                Schedule, complete and monitor
+                maternal home visits.
+              </p>
+
+              <button
+                type="button"
+                class="secondary-action maternal-tab-jump"
+                data-jump-tab="home"
+              >
+                Open Visits
+              </button>
+            </div>
+
+            <div class="maternal-section-card">
+              <div class="maternal-card-icon">
+                💉
+              </div>
+
+              <h4>
+                Vaccinations
+              </h4>
+
+              <p>
+                Maternal vaccination and
+                child immunization timelines.
+              </p>
+
+              <button
+                type="button"
+                class="secondary-action maternal-tab-jump"
+                data-jump-tab="vaccines"
+              >
+                Open Vaccines
+              </button>
+            </div>
+
+            <div class="maternal-section-card">
+              <div class="maternal-card-icon">
+                👶
+              </div>
+
+              <h4>
+                Children 0–6
+              </h4>
+
+              <p>
+                Multiple children, growth,
+                health visits and vaccines.
+              </p>
+
+              <button
+                type="button"
+                class="secondary-action maternal-tab-jump"
+                data-jump-tab="children"
+              >
+                Open Children
+              </button>
+            </div>
+
+          </div>
+
+          <div class="maternal-pregnancy-history">
+
+            <div class="maternal-section-title">
+              Pregnancy History
+            </div>
+
+            ${
+              pregnancies.length
+                ? pregnancies
+                    .map(
+                      item => `
+                        <div class="maternal-history-row">
+
+                          <strong>
+                            Pregnancy #${escapeHtml(
+                              String(
+                                item.pregnancy_number
+                              )
+                            )}
+                          </strong>
+
+                          <span>
+                            ${escapeHtml(
+                              item.status ||
+                              'Unknown'
+                            )}
+                          </span>
+
+                          <span>
+                            EDD:
+                            ${escapeHtml(
+                              item.edd_date ||
+                              'Not recorded'
+                            )}
+                          </span>
+
+                          <span>
+                            ASHA:
+                            ${escapeHtml(
+                              item.assigned_asha_name ||
+                              'Not assigned'
+                            )}
+                          </span>
+
+                        </div>
+                      `
+                    )
+                    .join('')
+                : `
+                  <div class="maternal-search-message">
+                    No pregnancy history recorded.
+                  </div>
+                `
+            }
+
+          </div>
+
+          <div class="maternal-children-preview">
+
+            <div class="maternal-section-title">
+              Children
+            </div>
+
+            ${
+              children.length
+                ? children
+                    .map(
+                      child => `
+                        <div class="maternal-history-row">
+
+                          <strong>
+                            ${escapeHtml(
+                              child.name ||
+                              'Child'
+                            )}
+                          </strong>
+
+                          <span>
+                            DOB:
+                            ${escapeHtml(
+                              child.date_of_birth ||
+                              'Not recorded'
+                            )}
+                          </span>
+
+                          <span>
+                            Pregnancy #${escapeHtml(
+                              String(
+                                child.pregnancy_number ||
+                                '—'
+                              )
+                            )}
+                          </span>
+
+                        </div>
+                      `
+                    )
+                    .join('')
+                : `
+                  <div class="maternal-search-message">
+                    No children registered yet.
+                  </div>
+                `
+            }
+
+          </div>
+
+        </div>
+
+      </div>
+    `
+  }
+
+  async function loadMaternalCareTab(
+    patientId,
+    tab
+  ) {
+
+    const target =
+      document.querySelector(
+        '#maternalTabContent'
+      )
+
+    if (!target) {
+      return
+    }
+
+    if (tab === 'overview') {
+      return
+    }
+
+    target.innerHTML = `
+      <div class="maternal-care-loading">
+        Loading ${escapeHtml(tab)}...
+      </div>
+    `
+
+    try {
+
+      const pregnancyResult =
+        await apiRequest(
+          `/maternal/patients/${encodeURIComponent(
+            patientId
+          )}/pregnancies?actor_id=${encodeURIComponent(
+            getCurrentActorId()
+          )}`
+        )
+
+      const pregnancies =
+        pregnancyResult?.pregnancies ||
+        []
+
+      const pregnancy =
+        pregnancies.find(
+          item =>
+            item.status === 'Active'
+        ) ||
+        pregnancies[0] ||
+        null
+
+      if (!pregnancy) {
+
+        target.innerHTML = `
+          <div class="maternal-care-empty">
+
+            <div class="maternal-care-empty-icon">
+              👩‍🍼
+            </div>
+
+            <h3>
+              No pregnancy record
+            </h3>
+
+            <p>
+              An authorized ASHA worker or doctor
+              must register a pregnancy first.
+            </p>
+
+          </div>
+        `
+
+        return
+      }
+
+      const pregnancyId =
+        pregnancy.id
+
+      // =================================================
+      // ANC TAB
+      // =================================================
+
+      if (tab === 'anc') {
+
+        const result =
+          await apiRequest(
+            `/maternal/pregnancies/${encodeURIComponent(
+              pregnancyId
+            )}/anc?actor_id=${encodeURIComponent(
+              getCurrentActorId()
+            )}`
+          )
+
+        const milestones =
+          result?.milestones ||
+          []
+
+        const summary =
+          result?.summary ||
+          {
+            completed: 0,
+            total: 4
+          }
+
+        target.innerHTML = `
+
+          <div class="maternal-module-header">
+
+            <div>
+              <div class="dashboard-kicker">
+                ANTENATAL CARE
+              </div>
+
+              <h3>
+                ANC Journey
+              </h3>
+
+              <p>
+                Track all four antenatal care
+                milestones for this pregnancy.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              class="primary-action"
+              id="addANCVisitBtn"
+            >
+              + Record ANC Visit
+            </button>
+
+          </div>
+
+
+          <div class="maternal-anc-progress">
+
+            <div class="maternal-progress-number">
+              ${summary.completed} / ${summary.total}
+            </div>
+
+            <div>
+              <strong>
+                ANC milestones completed
+              </strong>
+
+              <span>
+                Next due:
+                ${
+                  milestones.find(
+                    item =>
+                      item.status !== 'Completed'
+                  )?.window ||
+                  'All milestones recorded'
+                }
+              </span>
+            </div>
+
+          </div>
+
+
+          <div class="maternal-anc-timeline">
+
+            ${
+              milestones
+                .map(
+                  milestone => {
+
+                    const completed =
+                      milestone.status ===
+                      'Completed'
+
+                    const visit =
+                      milestone.visit
+
+                    return `
+                      <div
+                        class="
+                          maternal-anc-item
+                          ${
+                            completed
+                              ? 'completed'
+                              : 'pending'
+                          }
+                        "
+                      >
+
+                        <div class="maternal-anc-number">
+                          ${
+                            completed
+                              ? '✓'
+                              : milestone.visit_number
+                          }
+                        </div>
+
+                        <div class="maternal-anc-body">
+
+                          <div class="maternal-anc-top">
+
+                            <strong>
+                              ANC ${escapeHtml(
+                                String(
+                                  milestone.visit_number
+                                )
+                              )}
+                            </strong>
+
+                            <span>
+                              ${escapeHtml(
+                                milestone.window
+                              )}
+                            </span>
+
+                            <span
+                              class="
+                                maternal-status-pill
+                                ${
+                                  completed
+                                    ? 'done'
+                                    : 'due'
+                                }
+                              "
+                            >
+                              ${
+                                completed
+                                  ? 'Completed'
+                                  : 'Due'
+                              }
+                            </span>
+
+                          </div>
+
+                          ${
+                            visit
+                              ? `
+                                <div class="maternal-anc-details">
+
+                                  <span>
+                                    📅
+                                    ${escapeHtml(
+                                      visit.visit_date ||
+                                      'Date not recorded'
+                                    )}
+                                  </span>
+
+                                  ${
+                                    visit.blood_pressure
+                                      ? `
+                                        <span>
+                                          BP:
+                                          ${escapeHtml(
+                                            visit.blood_pressure
+                                          )}
+                                        </span>
+                                      `
+                                      : ''
+                                  }
+
+                                  ${
+                                    visit.weight
+                                      ? `
+                                        <span>
+                                          Weight:
+                                          ${escapeHtml(
+                                            visit.weight
+                                          )}
+                                        </span>
+                                      `
+                                      : ''
+                                  }
+
+                                  ${
+                                    visit.haemoglobin
+                                      ? `
+                                        <span>
+                                          Hb:
+                                          ${escapeHtml(
+                                            visit.haemoglobin
+                                          )}
+                                        </span>
+                                      `
+                                      : ''
+                                  }
+
+                                  ${
+                                    visit.clinician_name
+                                      ? `
+                                        <span>
+                                          👨‍⚕️
+                                          ${escapeHtml(
+                                            visit.clinician_name
+                                          )}
+                                        </span>
+                                      `
+                                      : ''
+                                  }
+
+                                </div>
+
+                                ${
+                                  visit.high_risk
+                                    ? `
+                                      <div class="maternal-warning">
+                                        ⚠ High-risk review recorded
+                                      </div>
+                                    `
+                                    : ''
+                                }
+
+                                ${
+                                  visit.referral_required
+                                    ? `
+                                      <div class="maternal-warning">
+                                        ↗ Referral required
+                                      </div>
+                                    `
+                                    : ''
+                                }
+                              `
+                              : `
+                                <div class="maternal-anc-empty">
+                                  This milestone has not been recorded yet.
+                                </div>
+                              `
+                          }
+
+                        </div>
+
+                      </div>
+                    `
+                  }
+                )
+                .join('')
+            }
+
+          </div>
+
+
+          <div
+            id="ancVisitFormContainer"
+            class="maternal-form-container"
+            hidden
+          ></div>
+
+        `
+
+        const addButton =
+          document.querySelector(
+            '#addANCVisitBtn'
+          )
+
+        const formContainer =
+          document.querySelector(
+            '#ancVisitFormContainer'
+          )
+
+        addButton?.addEventListener(
+          'click',
+          () => {
+
+            if (!formContainer) {
+              return
+            }
+
+            formContainer.hidden = false
+
+            formContainer.innerHTML = `
+
+              <form
+                id="ancVisitForm"
+                class="maternal-record-form"
+              >
+
+                <div class="maternal-form-title">
+                  Record ANC Visit
+                </div>
+
+                <div class="maternal-form-grid">
+
+                  <label>
+                    ANC Visit
+                    <select
+                      name="visit_number"
+                      required
+                    >
+                      <option value="1">
+                        ANC 1 — &lt; 12 weeks
+                      </option>
+
+                      <option value="2">
+                        ANC 2 — 14–26 weeks
+                      </option>
+
+                      <option value="3">
+                        ANC 3 — 28–34 weeks
+                      </option>
+
+                      <option value="4">
+                        ANC 4 — 36 weeks–delivery
+                      </option>
+                    </select>
+                  </label>
+
+                  <label>
+                    Visit Date
+                    <input
+                      type="date"
+                      name="visit_date"
+                      required
+                    >
+                  </label>
+
+                  <label>
+                    Blood Pressure
+                    <input
+                      type="text"
+                      name="blood_pressure"
+                      placeholder="e.g. 118/76"
+                    >
+                  </label>
+
+                  <label>
+                    Weight
+                    <input
+                      type="text"
+                      name="weight"
+                      placeholder="e.g. 54 kg"
+                    >
+                  </label>
+
+                  <label>
+                    Haemoglobin
+                    <input
+                      type="text"
+                      name="haemoglobin"
+                      placeholder="e.g. 11.8 g/dL"
+                    >
+                  </label>
+
+                  <label>
+                    Urine Result
+                    <input
+                      type="text"
+                      name="urine_result"
+                      placeholder="Optional"
+                    >
+                  </label>
+
+                  <label>
+                    Next Visit Date
+                    <input
+                      type="date"
+                      name="next_visit_date"
+                    >
+                  </label>
+
+                  <label>
+                    Clinician User ID
+                    <input
+                      type="text"
+                      name="clinician_user_id"
+                      placeholder="Optional"
+                    >
+                  </label>
+
+                </div>
+
+                <label>
+                  Investigations
+                  <textarea
+                    name="investigations"
+                    rows="2"
+                    placeholder="Tests / investigations"
+                  ></textarea>
+                </label>
+
+                <label>
+                  Findings
+                  <textarea
+                    name="findings"
+                    rows="2"
+                    placeholder="Clinical findings"
+                  ></textarea>
+                </label>
+
+                <label>
+                  Notes
+                  <textarea
+                    name="notes"
+                    rows="2"
+                    placeholder="Additional notes"
+                  ></textarea>
+                </label>
+
+                <div class="maternal-form-checks">
+
+                  <label>
+                    <input
+                      type="checkbox"
+                      name="high_risk"
+                    >
+                    High-risk pregnancy review
+                  </label>
+
+                  <label>
+                    <input
+                      type="checkbox"
+                      name="referral_required"
+                    >
+                    Referral required
+                  </label>
+
+                </div>
+
+                <div class="maternal-form-actions">
+
+                  <button
+                    type="submit"
+                    class="primary-action"
+                  >
+                    Save ANC Visit
+                  </button>
+
+                  <button
+                    type="button"
+                    class="secondary-action"
+                    id="cancelANCVisitBtn"
+                  >
+                    Cancel
+                  </button>
+
+                </div>
+
+              </form>
+
+            `
+
+            document
+              .querySelector(
+                '#cancelANCVisitBtn'
+              )
+              ?.addEventListener(
+                'click',
+                () => {
+                  formContainer.hidden = true
+                  formContainer.innerHTML = ''
+                }
+              )
+
+            document
+              .querySelector(
+                '#ancVisitForm'
+              )
+              ?.addEventListener(
+                'submit',
+                async event => {
+
+                  event.preventDefault()
+
+                  const form =
+                    event.currentTarget
+
+                  const formData =
+                    new FormData(form)
+
+                  const payload = {
+                    visit_number: Number(
+                      formData.get(
+                        'visit_number'
+                      )
+                    ),
+
+                    visit_date:
+                      formData.get(
+                        'visit_date'
+                      ) || null,
+
+                    clinician_user_id:
+                      formData.get(
+                        'clinician_user_id'
+                      ) || null,
+
+                    blood_pressure:
+                      formData.get(
+                        'blood_pressure'
+                      ) || null,
+
+                    weight:
+                      formData.get(
+                        'weight'
+                      ) || null,
+
+                    haemoglobin:
+                      formData.get(
+                        'haemoglobin'
+                      ) || null,
+
+                    urine_result:
+                      formData.get(
+                        'urine_result'
+                      ) || null,
+
+                    investigations:
+                      formData.get(
+                        'investigations'
+                      ) || null,
+
+                    findings:
+                      formData.get(
+                        'findings'
+                      ) || null,
+
+                    high_risk:
+                      formData.get(
+                        'high_risk'
+                      ) === 'on',
+
+                    referral_required:
+                      formData.get(
+                        'referral_required'
+                      ) === 'on',
+
+                    next_visit_date:
+                      formData.get(
+                        'next_visit_date'
+                      ) || null,
+
+                    notes:
+                      formData.get(
+                        'notes'
+                      ) || null
+                  }
+
+                  const saveButton =
+                    form.querySelector(
+                      'button[type="submit"]'
+                    )
+
+                  if (saveButton) {
+                    saveButton.disabled = true
+                    saveButton.textContent =
+                      'Saving...'
+                  }
+
+                  try {
+
+                    const saved =
+                      await apiRequest(
+                        `/maternal/pregnancies/${encodeURIComponent(
+                          pregnancyId
+                        )}/anc`,
+                        {
+                          method: 'POST',
+                          body:
+                            JSON.stringify(
+                              payload
+                            )
+                        }
+                      )
+
+                    if (
+                      !saved ||
+                      !saved.success
+                    ) {
+                      throw new Error(
+                        saved?.message ||
+                        'Unable to save ANC visit.'
+                      )
+                    }
+
+                    await loadMaternalCareTab(
+                      patientId,
+                      'anc'
+                    )
+
+                  } catch (error) {
+
+                    console.error(
+                      'Save ANC visit:',
+                      error
+                    )
+
+                    alert(
+                      error?.message ||
+                      'Unable to save ANC visit.'
+                    )
+
+                    if (saveButton) {
+                      saveButton.disabled =
+                        false
+                      saveButton.textContent =
+                        'Save ANC Visit'
+                    }
+
+                  }
+
+                }
+              )
+
+          }
+        )
+
+        return
+      }
+
+
+      // =================================================
+      // OTHER TABS — TEMPORARY HANDOFF
+      // =================================================
+
+      const labels = {
+        home: 'ASHA Home Visits',
+        vaccines: 'Vaccinations',
+        labs: 'Lab Reports',
+        delivery: 'Delivery',
+        postnatal: 'Postnatal Care',
+        children: 'Children 0–6',
+        family: 'Family Planning',
+        schemes: 'Government Schemes'
+      }
+
+      target.innerHTML = `
+        <div class="maternal-care-empty">
+
+          <div class="maternal-care-empty-icon">
+            🔧
+          </div>
+
+          <h3>
+            ${escapeHtml(
+              labels[tab] || tab
+            )}
+          </h3>
+
+          <p>
+            This module is connected to the DWIT
+            backend and will be built next.
+          </p>
+
+        </div>
+      `
+
+    } catch (error) {
+
+      console.error(
+        'Maternal care tab:',
+        error
+      )
+
+      target.innerHTML = `
+        <div class="maternal-care-empty">
+
+          <div class="maternal-care-empty-icon">
+            ⚠️
+          </div>
+
+          <h3>
+            Unable to load this module
+          </h3>
+
+          <p>
+            ${escapeHtml(
+              error?.message ||
+              'Please try again.'
+            )}
+          </p>
+
+        </div>
+      `
+    }
+  }
+
+  function wireMaternalPatientActions(
+    patientId
+  ) {
+
+    document
+      .querySelector(
+        '#maternalAddPregnancyBtn'
+      )
+      ?.addEventListener(
+        'click',
+        () => {
+
+         const existingForm =
+  document.querySelector(
+    '#maternalPregnancyFormOverlay'
+  )
+
+if (existingForm) {
+  existingForm.remove()
+}
+
+const formOverlay =
+  document.createElement('div')
+
+formOverlay.id =
+  'maternalPregnancyFormOverlay'
+
+formOverlay.className =
+  'maternal-form-overlay'
+
+formOverlay.innerHTML = `
+  <div class="maternal-form-modal">
+
+    <div class="maternal-form-modal-header">
+
+      <div>
+        <div class="dashboard-kicker">
+          MATERNAL & CHILD CARE
+        </div>
+
+        <h3>
+          Register Pregnancy
+        </h3>
+
+        <p>
+          Pregnancy registration can only be completed
+          by an authorized ASHA worker or doctor.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="modal close-btn"
+        id="closeMaternalPregnancyForm"
+      >
+        ×
+      </button>
+
+    </div>
+
+    <form
+      id="maternalPregnancyForm"
+      class="maternal-record-form"
+    >
+
+      <div class="maternal-form-grid">
+
+        <label>
+          LMP Date
+          <input
+            type="date"
+            name="lmp_date"
+            required
+          >
+        </label>
+
+        <label>
+          Expected Delivery Date
+          <input
+            type="date"
+            name="edd_date"
+          >
+        </label>
+
+        <label>
+          Mother's Blood Group
+          <input
+            type="text"
+            name="mother_blood_group"
+            placeholder="e.g. O+"
+          >
+        </label>
+
+        <label>
+          Partner Blood Group
+          <span class="maternal-field-optional">
+            Optional
+          </span>
+          <input
+            type="text"
+            name="partner_blood_group"
+            placeholder="e.g. O+"
+          >
+        </label>
+
+        <label>
+          Assigned ASHA User ID
+          <input
+            type="text"
+            name="assigned_asha_user_id"
+            placeholder="ASHA user ID"
+          >
+        </label>
+
+        <label>
+          Risk Status
+          <select name="risk_status">
+            <option value="Low Risk">
+              Low Risk
+            </option>
+
+            <option value="High Risk">
+              High Risk
+            </option>
+
+            <option value="Under Review">
+              Under Review
+            </option>
+          </select>
+        </label>
+
+      </div>
+
+      <label>
+        Notes
+        <textarea
+          name="notes"
+          rows="3"
+          placeholder="Additional clinical notes"
+        ></textarea>
+      </label>
+
+      <div class="maternal-rh-info">
+        <strong>Clinical review:</strong>
+        If the recorded blood groups indicate a possible
+        Rh-related concern, DWIT will flag the record
+        for clinician review.
+      </div>
+
+      <div class="maternal-form-actions">
+
+        <button
+          type="submit"
+          class="primary-action"
+        >
+          Register Pregnancy
+        </button>
+
+        <button
+          type="button"
+          class="secondary-action"
+          id="cancelMaternalPregnancyForm"
+        >
+          Cancel
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+`
+
+document.body.appendChild(
+  formOverlay
+)
+
+document
+  .querySelector(
+    '#closeMaternalPregnancyForm'
+  )
+  ?.addEventListener(
+    'click',
+    () => formOverlay.remove()
+  )
+
+document
+  .querySelector(
+    '#cancelMaternalPregnancyForm'
+  )
+  ?.addEventListener(
+    'click',
+    () => formOverlay.remove()
+  )
+
+document
+  .querySelector(
+    '#maternalPregnancyForm'
+  )
+  ?.addEventListener(
+    'submit',
+    async event => {
+
+      event.preventDefault()
+
+      const form =
+        event.currentTarget
+
+      const formData =
+        new FormData(form)
+
+      const payload = {
+
+        patient_id: patientId,
+
+        lmp_date:
+          formData.get('lmp_date') ||
+          null,
+
+        edd_date:
+          formData.get('edd_date') ||
+          null,
+
+        mother_blood_group:
+          formData.get(
+            'mother_blood_group'
+          ) || null,
+
+        partner_blood_group:
+          formData.get(
+            'partner_blood_group'
+          ) || null,
+
+        assigned_asha_user_id:
+          formData.get(
+            'assigned_asha_user_id'
+          ) || null,
+
+        risk_status:
+          formData.get(
+            'risk_status'
+          ) || 'Low Risk',
+
+        notes:
+          formData.get('notes') ||
+          null
+      }
+
+      const submitButton =
+        form.querySelector(
+          'button[type="submit"]'
+        )
+
+      if (submitButton) {
+        submitButton.disabled = true
+        submitButton.textContent =
+          'Registering...'
+      }
+
+      try {
+
+        const result =
+          await apiRequest(
+           `/maternal/pregnancies?actor_id=${encodeURIComponent(
+  getCurrentActorId()
+)}`,
+            {
+              method: 'POST',
+
+              body:
+                JSON.stringify(
+                  payload
+                )
+            }
+          )
+
+        if (
+          !result ||
+          !result.success
+        ) {
+          throw new Error(
+            result?.message ||
+            'Unable to register pregnancy.'
+          )
+        }
+
+        formOverlay.remove()
+
+        await loadMaternalPatient(
+          patientId
+        )
+
+      } catch (error) {
+
+        console.error(
+          'Pregnancy registration:',
+          error
+        )
+
+        alert(
+          error?.message ||
+          'Unable to register pregnancy.'
+        )
+
+        if (submitButton) {
+          submitButton.disabled = false
+          submitButton.textContent =
+            'Register Pregnancy'
+        }
+
+      }
+
+    }
+  )
+
+        }
+      )
+
+    document
+      .querySelectorAll(
+        '.maternal-care-tab'
+      )
+      .forEach(
+        button => {
+
+          button.addEventListener(
+            'click',
+            async () => {
+
+              document
+                .querySelectorAll(
+                  '.maternal-care-tab'
+                )
+                .forEach(
+                  item =>
+                    item.classList.remove(
+                      'active'
+                    )
+                )
+
+              button.classList.add(
+                'active'
+              )
+
+              const tab =
+                button.dataset.maternalTab
+
+              const target =
+                document.querySelector(
+                  '#maternalTabContent'
+                )
+
+              if (target) {
+
+               await loadMaternalCareTab(
+  patientId,
+  tab
+)
+
+              }
+
+            }
+          )
+
+        }
+      )
+
+    document
+      .querySelectorAll(
+        '.maternal-tab-jump'
+      )
+      .forEach(
+        button => {
+
+          button.addEventListener(
+            'click',
+            () => {
+
+              const targetTab =
+                button.dataset.jumpTab
+
+              const tabButton =
+                document.querySelector(
+                  `.maternal-care-tab[data-maternal-tab="${targetTab}"]`
+                )
+
+              tabButton?.click()
+
+            }
+          )
+
+        }
+      )
+  }
+
+  function getCurrentActorId() {
+
+    /*
+     * Replace this with the existing DWIT
+     * logged-in staff user ID once we wire
+     * the complete staff data layer.
+     */
+
+    return (
+      window.currentUserId ||
+      window.loggedInUserId ||
+      ''
+    )
+  }
+
+  searchButton?.addEventListener(
+    'click',
+    searchMaternalPatients
+  )
+
+  searchInput?.addEventListener(
+    'keydown',
+    event => {
+
+      if (event.key === 'Enter') {
+        searchMaternalPatients()
+      }
+
+    }
+  )
+}
+
 
   async function openAppointmentsCenter() {
+
+
 
     const existing = document.querySelector('#appointmentsCenterOverlay')
     if (existing) existing.remove()
@@ -5327,16 +7405,36 @@ let diagnostics = []
         </div>
 
 
-        <div class="staff-quick-actions">
-          <button type="button" class="secondary-action quick-action" id="openAppointmentsCenterBtn">
-            📅 ${isAsha ? 'Appointments' : 'Appointments & Availability'}
-          </button>
-          ${isAsha ? `
-            <div class="quick-action-note">Book a doctor slot for an authorized patient and track upcoming appointments.</div>
-          ` : `
-            <div class="quick-action-note">Set your availability and manage your appointment queue.</div>
-          `}
-        </div>
+       <div class="staff-quick-actions">
+
+  <button
+    type="button"
+    class="secondary-action quick-action"
+    id="openAppointmentsCenterBtn"
+  >
+    📅 ${isAsha ? 'Appointments' : 'Appointments & Availability'}
+  </button>
+
+  <button
+    type="button"
+    class="secondary-action quick-action maternal-care-launch"
+    id="openMaternalCareBtn"
+  >
+    👩‍🍼 Maternal & Child Care
+  </button>
+
+  ${isAsha ? `
+    <div class="quick-action-note">
+      Book a doctor slot for an authorized patient
+      and track upcoming appointments.
+    </div>
+  ` : `
+    <div class="quick-action-note">
+      Set your availability and manage your appointment queue.
+    </div>
+  `}
+
+</div>
 
         <div class="staff-workspace">
 <section class="dashboard-card medicine-inventory-card">
@@ -6042,6 +8140,15 @@ let diagnostics = []
     attachPatientButtons()
 
     document.querySelector('#openAppointmentsCenterBtn')?.addEventListener('click', openAppointmentsCenter)
+
+document
+  .querySelector('#openMaternalCareBtn')
+  ?.addEventListener(
+    'click',
+    () => {
+      openMaternalChildCareCenter()
+    }
+  )
 
     document
   .querySelector(
