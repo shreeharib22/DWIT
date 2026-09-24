@@ -5495,3 +5495,1708 @@ textarea.form-control {
     padding: 20px;
   }
 }
+
+/* =====================================================
+   DWIT MATERNAL & CHILD CARE CENTER
+===================================================== */
+
+.maternal-child-care-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(9, 24, 35, 0.5);
+  backdrop-filter: blur(8px);
+  overflow-y: auto;
+}
+
+.maternal-child-care-modal {
+  width: min(1180px, 100%);
+  max-height: 92vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1px solid rgba(20, 60, 60, 0.1);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.2);
+}
+
+.maternal-care-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 28px 30px 22px;
+  border-bottom: 1px solid rgba(20, 60, 60, 0.08);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(235, 249, 247, 0.95),
+      rgba(255, 255, 255, 1)
+    );
+}
+
+.maternal-care-header h2 {
+  margin: 7px 0 6px;
+  font-size: clamp(1.6rem, 2.5vw, 2.2rem);
+}
+
+.maternal-care-header p {
+  margin: 0;
+  max-width: 720px;
+  line-height: 1.55;
+  opacity: 0.68;
+}
+
+.maternal-care-search {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: end;
+  margin: 22px 30px;
+  padding: 18px;
+  border-radius: 18px;
+  background: #f7fbfa;
+  border: 1px solid rgba(28, 120, 112, 0.1);
+}
+
+.maternal-care-search label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.maternal-care-search input {
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(20, 60, 60, 0.14);
+  background: #ffffff;
+  font: inherit;
+  outline: none;
+}
+
+.maternal-care-search input:focus {
+  border-color: rgba(28, 120, 112, 0.5);
+  box-shadow: 0 0 0 4px rgba(28, 120, 112, 0.08);
+}
+
+.maternal-care-search button {
+  min-height: 48px;
+}
+
+.maternal-patient-results {
+  padding: 0 30px;
+}
+
+.maternal-patient-list {
+  display: grid;
+  gap: 8px;
+}
+
+.maternal-patient-result {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 14px 16px;
+  text-align: left;
+  border: 1px solid rgba(20, 60, 60, 0.1);
+  border-radius: 14px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: transform 0.18s ease,
+              border-color 0.18s ease,
+              box-shadow 0.18s ease;
+}
+
+.maternal-patient-result:hover {
+  transform: translateY(-1px);
+  border-color: rgba(28, 120, 112, 0.3);
+  box-shadow: 0 8px 22px rgba(20, 60, 60, 0.08);
+}
+
+.maternal-patient-result strong {
+  font-size: 0.95rem;
+}
+
+.maternal-patient-result span {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+.maternal-care-content {
+  padding: 0 30px 30px;
+}
+
+.maternal-care-loading,
+.maternal-search-message,
+.maternal-care-empty {
+  padding: 28px;
+  text-align: center;
+  border-radius: 18px;
+  background: #f8fbfb;
+  border: 1px dashed rgba(20, 60, 60, 0.14);
+}
+
+.maternal-care-empty-icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+
+.maternal-care-empty h3 {
+  margin: 4px 0 7px;
+}
+
+.maternal-care-empty p {
+  max-width: 600px;
+  margin: 0 auto 16px;
+  line-height: 1.55;
+  opacity: 0.68;
+}
+
+.maternal-patient-overview {
+  display: grid;
+  gap: 18px;
+}
+
+.maternal-patient-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+}
+
+.maternal-patient-hero h3 {
+  margin: 5px 0;
+  font-size: 1.45rem;
+}
+
+.maternal-patient-hero p {
+  margin: 0;
+  opacity: 0.7;
+}
+
+.maternal-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.maternal-summary-card {
+  padding: 16px;
+  border-radius: 16px;
+  background: #f8fbfb;
+  border: 1px solid rgba(20, 60, 60, 0.09);
+}
+
+.maternal-summary-card span {
+  display: block;
+  font-size: 0.75rem;
+  opacity: 0.62;
+  margin-bottom: 6px;
+}
+
+.maternal-summary-card strong {
+  font-size: 1rem;
+}
+
+.maternal-care-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 5px;
+  border-radius: 14px;
+  background: #f4f8f8;
+  scrollbar-width: thin;
+}
+
+.maternal-care-tab {
+  flex: 0 0 auto;
+  padding: 11px 15px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #385453;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.maternal-care-tab.active {
+  background: #ffffff;
+  color: #1c7870;
+  box-shadow: 0 3px 12px rgba(20, 60, 60, 0.08);
+}
+
+.maternal-tab-content {
+  min-height: 240px;
+}
+
+.maternal-timeline {
+  padding: 20px;
+  border-radius: 18px;
+  background: #f8fbfb;
+  border: 1px solid rgba(20, 60, 60, 0.09);
+}
+
+.maternal-timeline-title {
+  margin-bottom: 16px;
+  font-weight: 800;
+}
+
+.maternal-journey {
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.journey-step {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.journey-step span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #edf3f3;
+  color: #5c7372;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.journey-step.completed span {
+  background: #1c7870;
+  color: #ffffff;
+}
+
+.journey-step strong {
+  font-size: 0.78rem;
+}
+
+.journey-line {
+  width: 34px;
+  height: 2px;
+  margin: 0 8px;
+  flex: 0 0 auto;
+  background: rgba(28, 120, 112, 0.18);
+}
+
+.maternal-section-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.maternal-section-card {
+  padding: 18px;
+  border-radius: 17px;
+  background: #ffffff;
+  border: 1px solid rgba(20, 60, 60, 0.1);
+}
+
+.maternal-card-icon {
+  font-size: 1.4rem;
+  margin-bottom: 8px;
+}
+
+.maternal-section-card h4 {
+  margin: 0 0 6px;
+}
+
+.maternal-section-card p {
+  min-height: 48px;
+  margin: 0 0 14px;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  opacity: 0.65;
+}
+
+.maternal-pregnancy-history,
+.maternal-children-preview {
+  margin-top: 18px;
+}
+
+.maternal-section-title {
+  margin-bottom: 10px;
+  font-weight: 800;
+}
+
+.maternal-history-row {
+  display: grid;
+  grid-template-columns: 1.1fr 0.8fr 1fr 1.3fr;
+  gap: 10px;
+  padding: 13px 15px;
+  border: 1px solid rgba(20, 60, 60, 0.08);
+  border-radius: 12px;
+  background: #ffffff;
+  font-size: 0.82rem;
+}
+
+.maternal-history-row + .maternal-history-row {
+  margin-top: 7px;
+}
+
+.maternal-history-row span {
+  opacity: 0.65;
+}
+
+.maternal-search-message.error {
+  color: #9a3d3d;
+  background: rgba(190, 70, 70, 0.07);
+  border-color: rgba(190, 70, 70, 0.16);
+}
+
+@media (max-width: 900px) {
+  .maternal-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .maternal-section-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .maternal-child-care-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .maternal-child-care-modal {
+    width: 100%;
+    max-height: 95vh;
+    border-radius: 22px 22px 0 0;
+  }
+
+  .maternal-care-header,
+  .maternal-care-search,
+  .maternal-patient-results,
+  .maternal-care-content {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .maternal-care-search {
+    grid-template-columns: 1fr;
+    margin-left: 18px;
+    margin-right: 18px;
+  }
+
+  .maternal-patient-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .maternal-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .maternal-section-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .maternal-history-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* =====================================================
+   DWIT MATERNAL CARE — ASHA HOME VISITS
+===================================================== */
+
+.asha-visit-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.asha-summary-card {
+  padding: 16px;
+  border-radius: 16px;
+  background: #f8fbfb;
+  border: 1px solid rgba(20, 60, 60, 0.09);
+}
+
+.asha-summary-card span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.74rem;
+  opacity: 0.62;
+}
+
+.asha-summary-card strong {
+  font-size: 1rem;
+}
+
+.asha-home-visit-list {
+  display: grid;
+  gap: 10px;
+}
+
+.asha-home-visit-card {
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  gap: 14px;
+  padding: 17px;
+  border-radius: 17px;
+  background: #ffffff;
+  border: 1px solid rgba(20, 60, 60, 0.1);
+}
+
+.asha-home-visit-card.completed {
+  border-left: 4px solid #1c7870;
+}
+
+.asha-home-visit-card.scheduled {
+  border-left: 4px solid #d99b24;
+}
+
+.asha-home-visit-card.missed {
+  border-left: 4px solid #bb4b4b;
+}
+
+.asha-home-visit-date {
+  display: grid;
+  place-items: center;
+}
+
+.asha-home-visit-date span {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(28, 120, 112, 0.1);
+  color: #1c7870;
+  font-weight: 800;
+}
+
+.asha-home-visit-card.scheduled
+  .asha-home-visit-date span {
+  background: rgba(217, 155, 36, 0.12);
+  color: #9b700d;
+}
+
+.asha-home-visit-card.missed
+  .asha-home-visit-date span {
+  background: rgba(187, 75, 75, 0.1);
+  color: #a13d3d;
+}
+
+.asha-home-visit-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.asha-home-visit-top strong {
+  font-size: 1rem;
+}
+
+.asha-home-visit-main p {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  opacity: 0.75;
+}
+
+.maternal-status-pill.missed {
+  background: rgba(187, 75, 75, 0.1);
+  color: #a13d3d;
+}
+
+.asha-offline-badge {
+  display: inline-flex;
+  margin-top: 10px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(80, 100, 180, 0.08);
+  color: #4e61a2;
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+@media (max-width: 900px) {
+  .asha-visit-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .asha-visit-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .asha-home-visit-card {
+    grid-template-columns: 38px 1fr;
+    gap: 10px;
+  }
+}
+
+/* =====================================================
+   DWIT MATERNAL CARE — VACCINATIONS
+===================================================== */
+
+.maternal-vaccine-list {
+  display: grid;
+  gap: 10px;
+}
+
+.maternal-vaccine-card {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 14px;
+  padding: 17px;
+  border-radius: 17px;
+  background: #ffffff;
+  border: 1px solid rgba(20, 60, 60, 0.1);
+  border-left: 4px solid #d99b24;
+}
+
+.maternal-vaccine-card.completed {
+  border-left-color: #1c7870;
+}
+
+.maternal-vaccine-card.missed {
+  border-left-color: #bb4b4b;
+}
+
+.maternal-vaccine-card.not-due {
+  border-left-color: #78909c;
+}
+
+.maternal-vaccine-card.cancelled {
+  border-left-color: #8d8d8d;
+}
+
+.maternal-vaccine-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(28, 120, 112, 0.09);
+  font-size: 1.2rem;
+}
+
+.maternal-vaccine-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+
+.maternal-vaccine-top strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.maternal-vaccine-top div span {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  opacity: 0.62;
+}
+
+.maternal-vaccine-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 11px;
+  font-size: 0.82rem;
+  opacity: 0.72;
+}
+
+@media (max-width: 620px) {
+  .maternal-vaccine-card {
+    grid-template-columns: 38px 1fr;
+    gap: 10px;
+  }
+
+  .maternal-vaccine-top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+
+/* =====================================================
+   DWIT MATERNAL CARE — LAB REPORTS
+===================================================== */
+
+.maternal-lab-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.maternal-lab-count,
+.maternal-lab-info {
+  padding: 18px;
+  border-radius: 16px;
+  background: #f8fbfb;
+  border: 1px solid rgba(20, 60, 60, 0.09);
+}
+
+.maternal-lab-count span,
+.maternal-lab-info span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.75rem;
+  opacity: 0.62;
+}
+
+.maternal-lab-count strong,
+.maternal-lab-info strong {
+  font-size: 1.1rem;
+}
+
+.maternal-lab-list {
+  display: grid;
+  gap: 10px;
+}
+
+.maternal-lab-card {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 14px;
+  padding: 17px;
+  border-radius: 17px;
+  background: #ffffff;
+  border: 1px solid rgba(20, 60, 60, 0.1);
+}
+
+.maternal-lab-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(28, 120, 112, 0.09);
+  font-size: 1.2rem;
+}
+
+.maternal-lab-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.maternal-lab-top strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.maternal-lab-top div span {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  opacity: 0.62;
+}
+
+.maternal-lab-result {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 11px;
+  background: #f7faf9;
+}
+
+.maternal-lab-result span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.55;
+}
+
+.maternal-lab-result strong {
+  display: block;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 620px) {
+  .maternal-lab-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .maternal-lab-card {
+    grid-template-columns: 38px 1fr;
+    gap: 10px;
+  }
+
+  .maternal-lab-top {
+    flex-direction: column;
+  }
+}
+
+/* =====================================================
+   DWIT MATERNAL CARE — DELIVERY
+===================================================== */
+
+.delivery-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  margin-bottom: 16px;
+  border-radius: 17px;
+  background: rgba(40, 140, 90, 0.07);
+  border: 1px solid rgba(40, 140, 90, 0.14);
+}
+
+.delivery-status-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: rgba(40, 140, 90, 0.12);
+  color: #287b50;
+  font-weight: 800;
+  font-size: 1.2rem;
+}
+
+.delivery-status-banner strong,
+.delivery-status-banner span {
+  display: block;
+}
+
+.delivery-status-banner span {
+  margin-top: 4px;
+  font-size: 0.82rem;
+  opacity: 0.62;
+}
+
+.delivery-details-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.delivery-detail-card {
+  padding: 16px;
+  border-radius: 16px;
+  background: #f8fbfb;
+  border: 1px solid rgba(20, 60, 60, 0.09);
+}
+
+.delivery-detail-card span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.74rem;
+  opacity: 0.62;
+}
+
+.delivery-detail-card strong {
+  display: block;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.delivery-planning-card {
+  display: grid;
+  grid-template-columns: 56px 1fr 1fr 1fr;
+  gap: 16px;
+  align-items: center;
+  padding: 20px;
+  border-radius: 18px;
+  background: #f8fbfb;
+  border: 1px solid rgba(20, 60, 60, 0.1);
+  margin-bottom: 16px;
+}
+
+.delivery-planning-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(28, 120, 112, 0.09);
+  font-size: 1.35rem;
+}
+
+.delivery-planning-card span,
+.delivery-planning-card strong {
+  display: block;
+}
+
+.delivery-planning-card span {
+  margin-bottom: 5px;
+  font-size: 0.74rem;
+  opacity: 0.62;
+}
+
+.delivery-planning-card strong {
+  font-size: 0.92rem;
+}
+
+.delivery-note {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 14px 16px;
+  margin-top: 10px;
+  border-radius: 13px;
+  background: #f8fbfb;
+  border: 1px solid rgba(20, 60, 60, 0.09);
+}
+
+.delivery-note strong {
+  font-size: 0.8rem;
+}
+
+.delivery-note span {
+  font-size: 0.86rem;
+  line-height: 1.5;
+  opacity: 0.72;
+}
+
+.delivery-alert {
+  background: rgba(190, 70, 70, 0.06);
+  border-color: rgba(190, 70, 70, 0.14);
+}
+
+@media (max-width: 900px) {
+  .delivery-details-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .delivery-planning-card {
+    grid-template-columns: 48px 1fr 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .delivery-details-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .delivery-planning-card {
+    grid-template-columns: 48px 1fr;
+  }
+}
+
+/* =====================================================
+   DWIT MATERNAL CARE — POSTNATAL
+===================================================== */
+
+.postnatal-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.postnatal-summary-card {
+  padding: 16px;
+  border-radius: 16px;
+  background: #f8fbfb;
+  border: 1px solid rgba(20, 60, 60, 0.09);
+}
+
+.postnatal-summary-card span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.74rem;
+  opacity: 0.62;
+}
+
+.postnatal-summary-card strong {
+  font-size: 0.95rem;
+}
+
+.postnatal-timeline {
+  display: grid;
+  gap: 12px;
+}
+
+.postnatal-visit-card {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 14px;
+  padding: 17px;
+  border-radius: 17px;
+  background: #ffffff;
+  border: 1px solid rgba(20, 60, 60, 0.1);
+  border-left: 4px solid #1c7870;
+}
+
+.postnatal-visit-marker {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(28, 120, 112, 0.1);
+  color: #1c7870;
+  font-weight: 800;
+}
+
+.postnatal-visit-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.postnatal-visit-top strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.postnatal-visit-top div span {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  opacity: 0.62;
+}
+
+.postnatal-info-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 11px 13px;
+  border-radius: 11px;
+  background: #f7faf9;
+}
+
+.postnatal-info-block strong {
+  font-size: 0.76rem;
+}
+
+.postnatal-info-block span {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  opacity: 0.72;
+}
+
+.postnatal-tag {
+  display: inline-flex;
+  margin-top: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(40, 140, 90, 0.08);
+  color: #287b50;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.postnatal-notes {
+  margin: 11px 0 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  opacity: 0.7;
+}
+
+@media (max-width: 900px) {
+  .postnatal-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .postnatal-summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .postnatal-visit-card {
+    grid-template-columns: 38px 1fr;
+    gap: 10px;
+  }
+
+  .postnatal-visit-top {
+    flex-direction: column;
+  }
+}
+/* =====================================================
+   DWIT MATERNAL CARE — CHILDREN 0–6
+===================================================== */
+
+.child-care-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.child-summary-card {
+  padding: 16px;
+  border-radius: 16px;
+  background: #f8fbfb;
+  border: 1px solid rgba(20, 60, 60, 0.09);
+}
+
+.child-summary-card span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.74rem;
+  opacity: 0.62;
+}
+
+.child-summary-card strong {
+  font-size: 1rem;
+}
+
+.children-care-list {
+  display: grid;
+  gap: 12px;
+}
+
+.child-care-card {
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  gap: 15px;
+  padding: 18px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid rgba(20, 60, 60, 0.1);
+}
+
+.child-care-avatar {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  background: rgba(28, 120, 112, 0.09);
+  font-size: 1.35rem;
+}
+
+.child-care-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.child-care-top strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.child-care-top div span {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  opacity: 0.62;
+}
+
+.child-age-badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(28, 120, 112, 0.08);
+  color: #1c7870;
+  font-size: 0.74rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.child-care-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 0.78rem;
+  opacity: 0.62;
+}
+
+.child-immunization-mini {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f7faf9;
+}
+
+.child-immunization-mini-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 0.78rem;
+}
+
+.child-immunization-mini-top span {
+  opacity: 0.65;
+}
+
+.child-immunization-mini-top strong {
+  color: #1c7870;
+}
+
+.child-progress-track {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(28, 120, 112, 0.1);
+}
+
+.child-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #1c7870;
+  transition: width 0.3s ease;
+}
+
+.child-care-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.child-care-actions .secondary-action {
+  min-height: 38px;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 900px) {
+  .child-care-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .child-care-card {
+    grid-template-columns: 42px 1fr;
+    gap: 10px;
+  }
+
+  .child-care-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+
+  .child-care-top {
+    flex-direction: column;
+  }
+
+  .child-age-badge {
+    align-self: flex-start;
+  }
+
+  .child-care-actions {
+    flex-direction: column;
+  }
+
+  .child-care-actions .secondary-action {
+    width: 100%;
+  }
+}
+/* =====================================================
+   DWIT MATERNAL CARE — CHILD VACCINATIONS
+===================================================== */
+
+.child-vaccine-list {
+  display: grid;
+  gap: 10px;
+}
+
+.child-vaccine-card {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 14px;
+  padding: 17px;
+  border-radius: 17px;
+  background: #ffffff;
+  border: 1px solid rgba(20, 60, 60, 0.1);
+  border-left: 4px solid #d99b24;
+}
+
+.child-vaccine-card.completed {
+  border-left-color: #1c7870;
+}
+
+.child-vaccine-card.missed {
+  border-left-color: #bb4b4b;
+}
+
+.child-vaccine-card.not-due {
+  border-left-color: #78909c;
+}
+
+.child-vaccine-card.cancelled {
+  border-left-color: #8d8d8d;
+}
+
+.child-vaccine-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(28, 120, 112, 0.09);
+  font-size: 1.2rem;
+}
+
+.child-vaccine-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.child-vaccine-top strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.child-vaccine-top div span {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  opacity: 0.62;
+}
+
+.child-vaccine-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 11px;
+  font-size: 0.82rem;
+  opacity: 0.72;
+}
+
+@media (max-width: 620px) {
+  .child-vaccine-card {
+    grid-template-columns: 38px 1fr;
+    gap: 10px;
+  }
+
+  .child-vaccine-top {
+    flex-direction: column;
+  }
+}
+
+/* =====================================================
+   DWIT MATERNAL CARE — CHILD GROWTH & HEALTH
+===================================================== */
+
+.child-health-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.child-health-list {
+  display: grid;
+  gap: 12px;
+}
+
+.child-health-card {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 14px;
+  padding: 17px;
+  border-radius: 17px;
+  background: #ffffff;
+  border: 1px solid rgba(20, 60, 60, 0.1);
+  border-left: 4px solid #1c7870;
+}
+
+.child-health-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(28, 120, 112, 0.09);
+  font-size: 1.2rem;
+}
+
+.child-health-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.child-health-top strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.child-health-top div span {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  opacity: 0.62;
+}
+
+.child-health-measures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 11px;
+  font-size: 0.82rem;
+  opacity: 0.72;
+}
+
+.child-health-info-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 11px 13px;
+  border-radius: 11px;
+  background: #f7faf9;
+}
+
+.child-health-info-block strong {
+  font-size: 0.76rem;
+}
+
+.child-health-info-block span {
+  font-size: 0.84rem;
+  line-height: 1.5;
+  opacity: 0.72;
+}
+
+.child-health-notes {
+  margin: 10px 0 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  opacity: 0.68;
+}
+
+@media (max-width: 900px) {
+  .child-health-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .child-health-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .child-health-card {
+    grid-template-columns: 38px 1fr;
+    gap: 10px;
+  }
+
+  .child-health-top {
+    flex-direction: column;
+  }
+
+  .child-health-measures {
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+
+/* =====================================================
+   DWIT MATERNAL CARE — FAMILY PLANNING
+===================================================== */
+
+.family-planning-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.family-planning-stat {
+  padding: 16px;
+  border-radius: 16px;
+  background: #f8fbfb;
+  border: 1px solid rgba(20, 60, 60, 0.09);
+}
+
+.family-planning-stat span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.74rem;
+  opacity: 0.62;
+}
+
+.family-planning-stat strong {
+  display: block;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.family-planning-list {
+  display: grid;
+  gap: 10px;
+}
+
+.family-planning-card {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 14px;
+  padding: 17px;
+  border-radius: 17px;
+  background: #ffffff;
+  border: 1px solid rgba(20, 60, 60, 0.1);
+  border-left: 4px solid #1c7870;
+}
+
+.family-planning-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(28, 120, 112, 0.09);
+  font-size: 1.15rem;
+}
+
+.family-planning-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.family-planning-top strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.family-planning-top div span {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  opacity: 0.62;
+}
+
+.family-planning-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 11px;
+  padding: 11px 13px;
+  border-radius: 11px;
+  background: #f7faf9;
+}
+
+.family-planning-info strong {
+  font-size: 0.76rem;
+}
+
+.family-planning-info span {
+  font-size: 0.84rem;
+  line-height: 1.5;
+  opacity: 0.72;
+}
+
+.family-planning-notes {
+  margin: 10px 0 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  opacity: 0.68;
+}
+
+@media (max-width: 900px) {
+  .family-planning-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .family-planning-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .family-planning-card {
+    grid-template-columns: 38px 1fr;
+    gap: 10px;
+  }
+
+  .family-planning-top {
+    flex-direction: column;
+  }
+}
+
+/* =====================================================
+   DWIT MATERNAL CARE — GOVERNMENT SCHEMES
+===================================================== */
+
+.scheme-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.scheme-summary-card {
+  padding: 16px;
+  border-radius: 16px;
+  background: #f8fbfb;
+  border: 1px solid rgba(20, 60, 60, 0.09);
+}
+
+.scheme-summary-card span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.74rem;
+  opacity: 0.62;
+}
+
+.scheme-summary-card strong {
+  display: block;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.scheme-list {
+  display: grid;
+  gap: 10px;
+}
+
+.scheme-card {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 14px;
+  padding: 17px;
+  border-radius: 17px;
+  background: #ffffff;
+  border: 1px solid rgba(20, 60, 60, 0.1);
+}
+
+.scheme-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(28, 120, 112, 0.09);
+  font-size: 1.15rem;
+}
+
+.scheme-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.scheme-top strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.scheme-top div span {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  opacity: 0.62;
+}
+
+.scheme-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 11px;
+  font-size: 0.82rem;
+  opacity: 0.72;
+}
+
+.scheme-notes {
+  margin-top: 11px;
+  padding: 11px 13px;
+  border-radius: 11px;
+  background: #f7faf9;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  opacity: 0.72;
+}
+
+@media (max-width: 1000px) {
+  .scheme-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .scheme-summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .scheme-card {
+    grid-template-columns: 38px 1fr;
+    gap: 10px;
+  }
+
+  .scheme-top {
+    flex-direction: column;
+  }
+}
+
+/* =========================================================
+   PATIENT PORTAL · MATERNAL & CHILD CARE
+========================================================= */
+
+.maternal-patient-card {
+  margin-top: 18px;
+}
+
+.maternal-patient-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.maternal-summary-item {
+  padding: 14px;
+  border: 1px solid #e7e3dc;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.maternal-summary-item span {
+  display: block;
+  font-size: 12px;
+  opacity: 0.68;
+  margin-bottom: 6px;
+}
+
+.maternal-summary-item strong {
+  display: block;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.maternal-patient-card .dashboard-description {
+  margin-top: 14px;
+}
+
+@media (max-width: 800px) {
+  .maternal-patient-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .maternal-patient-summary {
+    grid-template-columns: 1fr;
+  }
+}

@@ -2482,7 +2482,8 @@ async function renderPatientDashboard(patientId) {
   labData,
   referralData,
   doctorData,
-  carepassData
+  carepassData,
+  maternalPregnancyData
 ] 
   = await Promise.all([
       apiGet(`/patients/${encodeURIComponent(patientId)}`),
@@ -2493,6 +2494,10 @@ async function renderPatientDashboard(patientId) {
       apiGet('/doctors'),
 apiGet(
   `/patients/${encodeURIComponent(patientId)}/carepass`
+)
+,
+apiGet(
+  `/maternal/patients/${encodeURIComponent(patientId)}/pregnancies?actor_id=${encodeURIComponent(patientId)}`
 )
     ])
 
@@ -2517,6 +2522,11 @@ apiGet(
     const doctors = Array.isArray(doctorData.doctors)
       ? doctorData.doctors
       : []
+
+      const maternalPregnancies =
+  Array.isArray(maternalPregnancyData?.pregnancies)
+    ? maternalPregnancyData.pregnancies
+    : []
 
     const availableDoctors = doctors.filter(
       doctor => doctor.availability_status === 'Available'
@@ -3074,6 +3084,72 @@ apiGet(
 
           </div>
 
+<section class="dashboard-card maternal-patient-card">
+  <div class="card-heading">
+    👩‍🍼 Maternal & Child Care
+  </div>
+
+  ${
+    String(patient.gender || '')
+      .trim()
+      .toLowerCase() === 'female'
+      ? (
+          maternalPregnancies.length
+            ? `
+              <div class="maternal-patient-summary">
+                <div class="maternal-summary-item">
+                  <span>Pregnancies</span>
+                  <strong>${maternalPregnancies.length}</strong>
+                </div>
+
+                <div class="maternal-summary-item">
+                  <span>Latest Status</span>
+                  <strong>
+                    ${escapeHtml(
+                      maternalPregnancies[0].status || 'Active'
+                    )}
+                  </strong>
+                </div>
+
+                <div class="maternal-summary-item">
+                  <span>EDD</span>
+                  <strong>
+                    ${escapeHtml(
+                      maternalPregnancies[0].edd || 'Not recorded'
+                    )}
+                  </strong>
+                </div>
+
+                <div class="maternal-summary-item">
+                  <span>Risk Status</span>
+                  <strong>
+                    ${escapeHtml(
+                      maternalPregnancies[0].risk_status || 'Not recorded'
+                    )}
+                  </strong>
+                </div>
+              </div>
+
+              <p class="dashboard-description">
+                Your maternal care records are available in DWIT as a
+                read-only health journey.
+              </p>
+            `
+            : `
+              <div class="empty-records">
+                No maternal pregnancy record has been registered yet.
+              </div>
+            `
+        )
+      : `
+          <div class="empty-records">
+            Maternal care records are not applicable to this patient profile.
+          </div>
+        `
+  }
+</section>
+
+          
          <section class="dashboard-card facility-finder-card">
 
   <div class="facility-finder-header">
@@ -6430,6 +6506,6515 @@ async function openMaternalChildCareCenter() {
         return
       }
 
+
+
+            // =================================================
+      // ASHA HOME VISITS
+      // =================================================
+
+      if (tab === 'home') {
+
+        const result =
+          await apiRequest(
+            `/maternal/pregnancies/${encodeURIComponent(
+              pregnancyId
+            )}/asha-home-visits?actor_id=${encodeURIComponent(
+              getCurrentActorId()
+            )}`
+          )
+
+        const visits =
+          result?.visits ||
+          []
+
+        const summary =
+          result?.summary ||
+          {
+            total: 0,
+            completed: 0,
+            scheduled: 0,
+            missed: 0
+          }
+
+        const assignedAsha =
+          pregnancy.assigned_asha_name ||
+          'Not assigned'
+
+        target.innerHTML = `
+
+          <div class="maternal-module-header">
+
+            <div>
+
+              <div class="dashboard-kicker">
+                ASHA FIELD WORKFLOW
+              </div>
+
+              <h3>
+                Home Visits
+              </h3>
+
+              <p>
+                Track scheduled, completed and missed
+                visits for the pregnant woman.
+              </p>
+
+            </div>
+
+            <button
+              type="button"
+              class="primary-action"
+              id="addAshaHomeVisitBtn"
+            >
+              + Record Home Visit
+            </button>
+
+          </div>
+
+
+          <div class="asha-visit-summary">
+
+            <div class="asha-summary-card">
+
+              <span>
+                Assigned ASHA
+              </span>
+
+              <strong>
+                ${escapeHtml(
+                  assignedAsha
+                )}
+              </strong>
+
+            </div>
+
+            <div class="asha-summary-card">
+
+              <span>
+                Total Visits
+              </span>
+
+              <strong>
+                ${summary.total}
+              </strong>
+
+            </div>
+
+            <div class="asha-summary-card">
+
+              <span>
+                Completed
+              </span>
+
+              <strong>
+                ${summary.completed}
+              </strong>
+
+            </div>
+
+            <div class="asha-summary-card">
+
+              <span>
+                Due / Scheduled
+              </span>
+
+              <strong>
+                ${summary.scheduled}
+              </strong>
+
+            </div>
+
+            <div class="asha-summary-card">
+
+              <span>
+                Missed
+              </span>
+
+              <strong>
+                ${summary.missed}
+              </strong>
+
+            </div>
+
+          </div>
+
+
+          <div class="asha-home-visit-list">
+
+            ${
+              visits.length
+                ? visits
+                    .map(
+                      visit => {
+
+                        const status =
+                          String(
+                            visit.status ||
+                            'Scheduled'
+                          )
+
+                        const statusClass =
+                          status
+                            .toLowerCase()
+                            .replace(
+                              /\s+/g,
+                              '-'
+                            )
+
+                        return `
+
+                          <div
+                            class="
+                              asha-home-visit-card
+                              ${statusClass}
+                            "
+                          >
+
+                            <div
+                              class="asha-home-visit-date"
+                            >
+
+                              <span>
+                                ${
+                                  status ===
+                                  'Completed'
+                                    ? '✓'
+                                    : status ===
+                                      'Missed'
+                                      ? '!'
+                                      : '○'
+                                }
+                              </span>
+
+                            </div>
+
+                            <div
+                              class="asha-home-visit-main"
+                            >
+
+                              <div
+                                class="asha-home-visit-top"
+                              >
+
+                                <strong>
+                                  ${
+                                    visit.visit_date ||
+                                    visit.scheduled_date ||
+                                    'Visit'
+                                  }
+                                </strong>
+
+                                <span
+                                  class="
+                                    maternal-status-pill
+                                    ${
+                                      status ===
+                                      'Completed'
+                                        ? 'done'
+                                        : status ===
+                                          'Missed'
+                                          ? 'missed'
+                                          : 'due'
+                                    }
+                                  "
+                                >
+                                  ${escapeHtml(
+                                    status
+                                  )}
+                                </span>
+
+                              </div>
+
+                              ${
+                                visit.purpose
+                                  ? `
+                                    <p>
+                                      <strong>
+                                        Purpose:
+                                      </strong>
+                                      ${escapeHtml(
+                                        visit.purpose
+                                      )}
+                                    </p>
+                                  `
+                                  : ''
+                              }
+
+                              ${
+                                visit.observations
+                                  ? `
+                                    <p>
+                                      <strong>
+                                        Observations:
+                                      </strong>
+                                      ${escapeHtml(
+                                        visit.observations
+                                      )}
+                                    </p>
+                                  `
+                                  : ''
+                              }
+
+                              ${
+                                visit.counselling
+                                  ? `
+                                    <p>
+                                      <strong>
+                                        Counselling:
+                                      </strong>
+                                      ${escapeHtml(
+                                        visit.counselling
+                                      )}
+                                    </p>
+                                  `
+                                  : ''
+                              }
+
+                              ${
+                                visit.warning_signs
+                                  ? `
+                                    <div
+                                      class="maternal-warning"
+                                    >
+                                      ⚠
+                                      ${escapeHtml(
+                                        visit.warning_signs
+                                      )}
+                                    </div>
+                                  `
+                                  : ''
+                              }
+
+                              ${
+                                visit.referral_required
+                                  ? `
+                                    <div
+                                      class="maternal-warning"
+                                    >
+                                      ↗ Referral required
+                                    </div>
+                                  `
+                                  : ''
+                              }
+
+                              ${
+                                visit.offline_created
+                                  ? `
+                                    <span
+                                      class="asha-offline-badge"
+                                    >
+                                      📡 Offline visit
+                                    </span>
+                                  `
+                                  : ''
+                              }
+
+                            </div>
+
+                          </div>
+
+                        `
+                      }
+                    )
+                    .join('')
+                : `
+                  <div
+                    class="maternal-care-empty"
+                  >
+
+                    <div
+                      class="maternal-care-empty-icon"
+                    >
+                      🏠
+                    </div>
+
+                    <h3>
+                      No home visits recorded
+                    </h3>
+
+                    <p>
+                      Record the first ASHA home visit
+                      for this pregnancy.
+                    </p>
+
+                  </div>
+                `
+            }
+
+          </div>
+
+
+          <div
+            id="ashaHomeVisitFormContainer"
+            class="maternal-form-container"
+            hidden
+          ></div>
+
+        `
+
+
+        const addVisitButton =
+          document.querySelector(
+            '#addAshaHomeVisitBtn'
+          )
+
+        const formContainer =
+          document.querySelector(
+            '#ashaHomeVisitFormContainer'
+          )
+
+
+        addVisitButton?.addEventListener(
+          'click',
+          () => {
+
+            if (!formContainer) {
+              return
+            }
+
+            formContainer.hidden = false
+
+            const assignedAshaId =
+              pregnancy.assigned_asha_user_id ||
+              getCurrentActorId()
+
+            formContainer.innerHTML = `
+
+              <form
+                id="ashaHomeVisitForm"
+                class="maternal-record-form"
+              >
+
+                <div class="maternal-form-title">
+                  Record ASHA Home Visit
+                </div>
+
+                <div class="maternal-form-grid">
+
+                  <label>
+                    Scheduled Date
+
+                    <input
+                      type="date"
+                      name="scheduled_date"
+                      required
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Visit Date
+
+                    <input
+                      type="date"
+                      name="visit_date"
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Visit Status
+
+                    <select
+                      name="status"
+                    >
+
+                      <option value="Completed">
+                        Completed
+                      </option>
+
+                      <option value="Scheduled">
+                        Scheduled
+                      </option>
+
+                      <option value="Missed">
+                        Missed
+                      </option>
+
+                    </select>
+
+                  </label>
+
+
+                  <label>
+                    Purpose
+
+                    <input
+                      type="text"
+                      name="purpose"
+                      placeholder="e.g. routine home follow-up"
+                    >
+
+                  </label>
+
+                </div>
+
+
+                <label>
+                  Observations
+
+                  <textarea
+                    name="observations"
+                    rows="3"
+                    placeholder="Record observations"
+                  ></textarea>
+
+                </label>
+
+
+                <label>
+                  Counselling
+
+                  <textarea
+                    name="counselling"
+                    rows="3"
+                    placeholder="Counselling / guidance provided"
+                  ></textarea>
+
+                </label>
+
+
+                <label>
+                  Warning Signs
+
+                  <textarea
+                    name="warning_signs"
+                    rows="2"
+                    placeholder="Record any warning signs"
+                  ></textarea>
+
+                </label>
+
+
+                <label>
+                  Notes
+
+                  <textarea
+                    name="notes"
+                    rows="2"
+                    placeholder="Additional notes"
+                  ></textarea>
+
+                </label>
+
+
+                <div
+                  class="maternal-form-checks"
+                >
+
+                  <label>
+
+                    <input
+                      type="checkbox"
+                      name="referral_required"
+                    >
+
+                    Referral required
+
+                  </label>
+
+                </div>
+
+
+                <div
+                  class="maternal-form-actions"
+                >
+
+                  <button
+                    type="submit"
+                    class="primary-action"
+                  >
+                    Save Home Visit
+                  </button>
+
+                  <button
+                    type="button"
+                    class="secondary-action"
+                    id="cancelAshaHomeVisitBtn"
+                  >
+                    Cancel
+                  </button>
+
+                </div>
+
+              </form>
+
+            `
+
+
+            document
+              .querySelector(
+                '#cancelAshaHomeVisitBtn'
+              )
+              ?.addEventListener(
+                'click',
+                () => {
+
+                  formContainer.hidden =
+                    true
+
+                  formContainer.innerHTML =
+                    ''
+
+                }
+              )
+
+
+            document
+              .querySelector(
+                '#ashaHomeVisitForm'
+              )
+              ?.addEventListener(
+                'submit',
+                async event => {
+
+                  event.preventDefault()
+
+                  const form =
+                    event.currentTarget
+
+                  const formData =
+                    new FormData(form)
+
+                  const payload = {
+
+                    asha_user_id:
+                      assignedAshaId,
+
+                    scheduled_date:
+                      formData.get(
+                        'scheduled_date'
+                      ) || null,
+
+                    visit_date:
+                      formData.get(
+                        'visit_date'
+                      ) || null,
+
+                    status:
+                      formData.get(
+                        'status'
+                      ) || 'Completed',
+
+                    purpose:
+                      formData.get(
+                        'purpose'
+                      ) || null,
+
+                    observations:
+                      formData.get(
+                        'observations'
+                      ) || null,
+
+                    counselling:
+                      formData.get(
+                        'counselling'
+                      ) || null,
+
+                    warning_signs:
+                      formData.get(
+                        'warning_signs'
+                      ) || null,
+
+                    referral_required:
+                      formData.get(
+                        'referral_required'
+                      ) === 'on',
+
+                    notes:
+                      formData.get(
+                        'notes'
+                      ) || null,
+
+                    offline_created: false
+                  }
+
+
+                  const saveButton =
+                    form.querySelector(
+                      'button[type="submit"]'
+                    )
+
+                  if (saveButton) {
+
+                    saveButton.disabled =
+                      true
+
+                    saveButton.textContent =
+                      'Saving...'
+
+                  }
+
+
+                  try {
+
+                    const saved =
+                      await apiRequest(
+                        `/maternal/pregnancies/${encodeURIComponent(
+                          pregnancyId
+                        )}/asha-home-visits?actor_id=${encodeURIComponent(
+                          getCurrentActorId()
+                        )}`,
+                        {
+                          method: 'POST',
+
+                          body:
+                            JSON.stringify(
+                              payload
+                            )
+                        }
+                      )
+
+
+                    if (
+                      !saved ||
+                      !saved.success
+                    ) {
+
+                      throw new Error(
+                        saved?.message ||
+                        'Unable to save home visit.'
+                      )
+
+                    }
+
+
+                    await loadMaternalCareTab(
+                      patientId,
+                      'home'
+                    )
+
+                  } catch (error) {
+
+                    console.error(
+                      'Save ASHA home visit:',
+                      error
+                    )
+
+                    alert(
+                      error?.message ||
+                      'Unable to save home visit.'
+                    )
+
+                    if (saveButton) {
+
+                      saveButton.disabled =
+                        false
+
+                      saveButton.textContent =
+                        'Save Home Visit'
+
+                    }
+
+                  }
+
+                }
+              )
+
+          }
+        )
+
+        return
+      }
+
+
+            // =================================================
+      // MATERNAL VACCINATIONS
+      // =================================================
+
+      if (tab === 'vaccines') {
+
+        const result =
+          await apiRequest(
+            `/maternal/pregnancies/${encodeURIComponent(
+              pregnancyId
+            )}/vaccinations?actor_id=${encodeURIComponent(
+              getCurrentActorId()
+            )}`
+          )
+
+        const vaccinations =
+          result?.vaccinations ||
+          []
+
+        const summary =
+          result?.summary ||
+          {
+            total: 0,
+            completed: 0,
+            pending: 0,
+            missed: 0
+          }
+
+        target.innerHTML = `
+
+          <div class="maternal-module-header">
+
+            <div>
+
+              <div class="dashboard-kicker">
+                MATERNAL IMMUNIZATION
+              </div>
+
+              <h3>
+                Mother Vaccination Tracker
+              </h3>
+
+              <p>
+                Track maternal vaccinations recorded
+                by the healthcare worker.
+              </p>
+
+            </div>
+
+            <button
+              type="button"
+              class="primary-action"
+              id="addMaternalVaccineBtn"
+            >
+              + Record Vaccination
+            </button>
+
+          </div>
+
+
+          <div class="asha-visit-summary">
+
+            <div class="asha-summary-card">
+
+              <span>Total</span>
+
+              <strong>
+                ${summary.total}
+              </strong>
+
+            </div>
+
+            <div class="asha-summary-card">
+
+              <span>Completed</span>
+
+              <strong>
+                ${summary.completed}
+              </strong>
+
+            </div>
+
+            <div class="asha-summary-card">
+
+              <span>Pending</span>
+
+              <strong>
+                ${summary.pending}
+              </strong>
+
+            </div>
+
+            <div class="asha-summary-card">
+
+              <span>Missed</span>
+
+              <strong>
+                ${summary.missed}
+              </strong>
+
+            </div>
+
+          </div>
+
+
+          <div class="maternal-vaccine-list">
+
+            ${
+              vaccinations.length
+                ? vaccinations
+                    .map(
+                      vaccination => {
+
+                        const status =
+                          String(
+                            vaccination.status ||
+                            'Pending'
+                          )
+
+                        const statusClass =
+                          status
+                            .toLowerCase()
+                            .replace(
+                              /\s+/g,
+                              '-'
+                            )
+
+                        return `
+
+                          <div
+                            class="
+                              maternal-vaccine-card
+                              ${statusClass}
+                            "
+                          >
+
+                            <div
+                              class="maternal-vaccine-icon"
+                            >
+                              💉
+                            </div>
+
+                            <div
+                              class="maternal-vaccine-main"
+                            >
+
+                              <div
+                                class="
+                                  maternal-vaccine-top
+                                "
+                              >
+
+                                <div>
+
+                                  <strong>
+                                    ${escapeHtml(
+                                      vaccination.vaccine_name ||
+                                      'Vaccine'
+                                    )}
+                                  </strong>
+
+                                  <span>
+                                    ${escapeHtml(
+                                      vaccination.dose ||
+                                      'Dose'
+                                    )}
+                                  </span>
+
+                                </div>
+
+                                <span
+                                  class="
+                                    maternal-status-pill
+                                    ${
+                                      status ===
+                                      'Completed'
+                                        ? 'done'
+                                        : status ===
+                                          'Missed'
+                                          ? 'missed'
+                                          : 'due'
+                                    }
+                                  "
+                                >
+                                  ${escapeHtml(
+                                    status
+                                  )}
+                                </span>
+
+                              </div>
+
+
+                              <div
+                                class="
+                                  maternal-vaccine-details
+                                "
+                              >
+
+                                ${
+                                  vaccination
+                                    .scheduled_date
+                                    ? `
+                                      <span>
+                                        📅 Scheduled:
+                                        ${escapeHtml(
+                                          vaccination.scheduled_date
+                                        )}
+                                      </span>
+                                    `
+                                    : ''
+                                }
+
+                                ${
+                                  vaccination
+                                    .administered_date
+                                    ? `
+                                      <span>
+                                        ✓ Administered:
+                                        ${escapeHtml(
+                                          vaccination.administered_date
+                                        )}
+                                      </span>
+                                    `
+                                    : ''
+                                }
+
+                                ${
+                                  vaccination.notes
+                                    ? `
+                                      <span>
+                                        📝
+                                        ${escapeHtml(
+                                          vaccination.notes
+                                        )}
+                                      </span>
+                                    `
+                                    : ''
+                                }
+
+                              </div>
+
+                            </div>
+
+                          </div>
+
+                        `
+                      }
+                    )
+                    .join('')
+                : `
+                  <div class="maternal-care-empty">
+
+                    <div
+                      class="maternal-care-empty-icon"
+                    >
+                      💉
+                    </div>
+
+                    <h3>
+                      No maternal vaccinations recorded
+                    </h3>
+
+                    <p>
+                      Add the vaccination record when
+                      it is documented by the healthcare worker.
+                    </p>
+
+                  </div>
+                `
+            }
+
+          </div>
+
+
+          <div
+            id="maternalVaccineFormContainer"
+            class="maternal-form-container"
+            hidden
+          ></div>
+
+        `
+
+
+        const addVaccineButton =
+          document.querySelector(
+            '#addMaternalVaccineBtn'
+          )
+
+        const formContainer =
+          document.querySelector(
+            '#maternalVaccineFormContainer'
+          )
+
+
+        addVaccineButton?.addEventListener(
+          'click',
+          () => {
+
+            if (!formContainer) {
+              return
+            }
+
+            formContainer.hidden = false
+
+            formContainer.innerHTML = `
+
+              <form
+                id="maternalVaccineForm"
+                class="maternal-record-form"
+              >
+
+                <div class="maternal-form-title">
+                  Record Maternal Vaccination
+                </div>
+
+
+                <div class="maternal-form-grid">
+
+                  <label>
+                    Vaccine Name
+
+                    <input
+                      type="text"
+                      name="vaccine_name"
+                      placeholder="e.g. Td"
+                      required
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Dose
+
+                    <input
+                      type="text"
+                      name="dose"
+                      placeholder="e.g. Dose 1"
+                      required
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Scheduled Date
+
+                    <input
+                      type="date"
+                      name="scheduled_date"
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Administered Date
+
+                    <input
+                      type="date"
+                      name="administered_date"
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Status
+
+                    <select name="status">
+
+                      <option value="Pending">
+                        Pending
+                      </option>
+
+                      <option value="Completed">
+                        Completed
+                      </option>
+
+                      <option value="Missed">
+                        Missed
+                      </option>
+
+                      <option value="Not Due">
+                        Not Due
+                      </option>
+
+                      <option value="Cancelled">
+                        Cancelled
+                      </option>
+
+                    </select>
+
+                  </label>
+
+                </div>
+
+
+                <label>
+                  Notes
+
+                  <textarea
+                    name="notes"
+                    rows="3"
+                    placeholder="Optional notes"
+                  ></textarea>
+
+                </label>
+
+
+                <div
+                  class="maternal-form-actions"
+                >
+
+                  <button
+                    type="submit"
+                    class="primary-action"
+                  >
+                    Save Vaccination
+                  </button>
+
+                  <button
+                    type="button"
+                    class="secondary-action"
+                    id="cancelMaternalVaccineBtn"
+                  >
+                    Cancel
+                  </button>
+
+                </div>
+
+              </form>
+
+            `
+
+
+            document
+              .querySelector(
+                '#cancelMaternalVaccineBtn'
+              )
+              ?.addEventListener(
+                'click',
+                () => {
+
+                  formContainer.hidden =
+                    true
+
+                  formContainer.innerHTML =
+                    ''
+
+                }
+              )
+
+
+            document
+              .querySelector(
+                '#maternalVaccineForm'
+              )
+              ?.addEventListener(
+                'submit',
+                async event => {
+
+                  event.preventDefault()
+
+                  const form =
+                    event.currentTarget
+
+                  const formData =
+                    new FormData(form)
+
+                  const payload = {
+
+                    vaccine_name:
+                      formData.get(
+                        'vaccine_name'
+                      ),
+
+                    dose:
+                      formData.get(
+                        'dose'
+                      ),
+
+                    scheduled_date:
+                      formData.get(
+                        'scheduled_date'
+                      ) || null,
+
+                    administered_date:
+                      formData.get(
+                        'administered_date'
+                      ) || null,
+
+                    status:
+                      formData.get(
+                        'status'
+                      ) || 'Pending',
+
+                    notes:
+                      formData.get(
+                        'notes'
+                      ) || null
+
+                  }
+
+
+                  const saveButton =
+                    form.querySelector(
+                      'button[type="submit"]'
+                    )
+
+                  if (saveButton) {
+
+                    saveButton.disabled =
+                      true
+
+                    saveButton.textContent =
+                      'Saving...'
+
+                  }
+
+
+                  try {
+
+                    const saved =
+                      await apiRequest(
+                        `/maternal/pregnancies/${encodeURIComponent(
+                          pregnancyId
+                        )}/vaccinations?actor_id=${encodeURIComponent(
+                          getCurrentActorId()
+                        )}`,
+                        {
+                          method: 'POST',
+
+                          body:
+                            JSON.stringify(
+                              payload
+                            )
+                        }
+                      )
+
+
+                    if (
+                      !saved ||
+                      !saved.success
+                    ) {
+
+                      throw new Error(
+                        saved?.message ||
+                        'Unable to save vaccination.'
+                      )
+
+                    }
+
+
+                    await loadMaternalCareTab(
+                      patientId,
+                      'vaccines'
+                    )
+
+                  } catch (error) {
+
+                    console.error(
+                      'Save maternal vaccination:',
+                      error
+                    )
+
+                    alert(
+                      error?.message ||
+                      'Unable to save vaccination.'
+                    )
+
+                    if (saveButton) {
+
+                      saveButton.disabled =
+                        false
+
+                      saveButton.textContent =
+                        'Save Vaccination'
+
+                    }
+
+                  }
+
+                }
+              )
+
+          }
+        )
+
+        return
+      }
+
+
+            // =================================================
+      // PREGNANCY LAB REPORTS
+      // =================================================
+
+      if (tab === 'labs') {
+
+        const result =
+          await apiRequest(
+            `/maternal/pregnancies/${encodeURIComponent(
+              pregnancyId
+            )}/labs?actor_id=${encodeURIComponent(
+              getCurrentActorId()
+            )}`
+          )
+
+        const labs =
+          result?.labs ||
+          []
+
+        target.innerHTML = `
+
+          <div class="maternal-module-header">
+
+            <div>
+
+              <div class="dashboard-kicker">
+                PREGNANCY HEALTH RECORDS
+              </div>
+
+              <h3>
+                Lab Reports
+              </h3>
+
+              <p>
+                Pregnancy-linked investigations and
+                laboratory reports.
+              </p>
+
+            </div>
+
+            <button
+              type="button"
+              class="primary-action"
+              id="addPregnancyLabBtn"
+            >
+              + Add Lab Report
+            </button>
+
+          </div>
+
+
+          <div class="maternal-lab-summary">
+
+            <div class="maternal-lab-count">
+              <span>Total Reports</span>
+              <strong>${labs.length}</strong>
+            </div>
+
+            <div class="maternal-lab-info">
+              <span>Linked To</span>
+              <strong>
+                Pregnancy #${escapeHtml(
+                  String(
+                    pregnancy.pregnancy_number ||
+                    '—'
+                  )
+                )}
+              </strong>
+            </div>
+
+          </div>
+
+
+          <div class="maternal-lab-list">
+
+            ${
+              labs.length
+                ? labs
+                    .map(
+                      lab => `
+
+                        <div class="maternal-lab-card">
+
+                          <div class="maternal-lab-icon">
+                            🧪
+                          </div>
+
+                          <div class="maternal-lab-main">
+
+                            <div class="maternal-lab-top">
+
+                              <div>
+
+                                <strong>
+                                  ${escapeHtml(
+                                    lab.test_name ||
+                                    'Lab Test'
+                                  )}
+                                </strong>
+
+                                <span>
+                                  ${escapeHtml(
+                                    lab.report_date ||
+                                    'Date not recorded'
+                                  )}
+                                </span>
+
+                              </div>
+
+                              <span
+                                class="
+                                  maternal-status-pill
+                                  ${
+                                    String(
+                                      lab.status ||
+                                      ''
+                                    ).toLowerCase() ===
+                                    'available'
+                                      ? 'done'
+                                      : 'due'
+                                  }
+                                "
+                              >
+                                ${escapeHtml(
+                                  lab.status ||
+                                  'Available'
+                                )}
+                              </span>
+
+                            </div>
+
+                            <div class="maternal-lab-result">
+
+                              <span>
+                                Result
+                              </span>
+
+                              <strong>
+                                ${escapeHtml(
+                                  lab.result ||
+                                  'No result recorded'
+                                )}
+                              </strong>
+
+                            </div>
+
+                          </div>
+
+                        </div>
+
+                      `
+                    )
+                    .join('')
+                : `
+                  <div class="maternal-care-empty">
+
+                    <div
+                      class="maternal-care-empty-icon"
+                    >
+                      🧪
+                    </div>
+
+                    <h3>
+                      No lab reports recorded
+                    </h3>
+
+                    <p>
+                      Add a pregnancy-linked lab report
+                      to keep investigations in one place.
+                    </p>
+
+                  </div>
+                `
+            }
+
+          </div>
+
+
+          <div
+            id="pregnancyLabFormContainer"
+            class="maternal-form-container"
+            hidden
+          ></div>
+
+        `
+
+
+        const addLabButton =
+          document.querySelector(
+            '#addPregnancyLabBtn'
+          )
+
+        const formContainer =
+          document.querySelector(
+            '#pregnancyLabFormContainer'
+          )
+
+
+        addLabButton?.addEventListener(
+          'click',
+          () => {
+
+            if (!formContainer) {
+              return
+            }
+
+            formContainer.hidden = false
+
+            formContainer.innerHTML = `
+
+              <form
+                id="pregnancyLabForm"
+                class="maternal-record-form"
+              >
+
+                <div class="maternal-form-title">
+                  Add Pregnancy Lab Report
+                </div>
+
+
+                <div class="maternal-form-grid">
+
+                  <label>
+                    Test Name
+
+                    <input
+                      type="text"
+                      name="test_name"
+                      placeholder="e.g. Haemoglobin"
+                      required
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Report Date
+
+                    <input
+                      type="date"
+                      name="report_date"
+                      required
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Status
+
+                    <select name="status">
+
+                      <option value="Available">
+                        Available
+                      </option>
+
+                      <option value="Pending">
+                        Pending
+                      </option>
+
+                      <option value="Under Review">
+                        Under Review
+                      </option>
+
+                    </select>
+
+                  </label>
+
+                </div>
+
+
+                <label>
+                  Result
+
+                  <textarea
+                    name="result"
+                    rows="4"
+                    placeholder="Enter laboratory result"
+                    required
+                  ></textarea>
+
+                </label>
+
+
+                <div class="maternal-form-actions">
+
+                  <button
+                    type="submit"
+                    class="primary-action"
+                  >
+                    Save Lab Report
+                  </button>
+
+                  <button
+                    type="button"
+                    class="secondary-action"
+                    id="cancelPregnancyLabBtn"
+                  >
+                    Cancel
+                  </button>
+
+                </div>
+
+              </form>
+
+            `
+
+
+            document
+              .querySelector(
+                '#cancelPregnancyLabBtn'
+              )
+              ?.addEventListener(
+                'click',
+                () => {
+
+                  formContainer.hidden =
+                    true
+
+                  formContainer.innerHTML =
+                    ''
+
+                }
+              )
+
+
+            document
+              .querySelector(
+                '#pregnancyLabForm'
+              )
+              ?.addEventListener(
+                'submit',
+                async event => {
+
+                  event.preventDefault()
+
+                  const form =
+                    event.currentTarget
+
+                  const formData =
+                    new FormData(form)
+
+                  const payload = {
+
+                    test_name:
+                      formData.get(
+                        'test_name'
+                      ),
+
+                    result:
+                      formData.get(
+                        'result'
+                      ),
+
+                    report_date:
+                      formData.get(
+                        'report_date'
+                      ),
+
+                    status:
+                      formData.get(
+                        'status'
+                      ) ||
+                      'Available'
+
+                  }
+
+
+                  const saveButton =
+                    form.querySelector(
+                      'button[type="submit"]'
+                    )
+
+                  if (saveButton) {
+
+                    saveButton.disabled =
+                      true
+
+                    saveButton.textContent =
+                      'Saving...'
+
+                  }
+
+
+                  try {
+
+                    const saved =
+                      await apiRequest(
+                        `/maternal/pregnancies/${encodeURIComponent(
+                          pregnancyId
+                        )}/labs?actor_id=${encodeURIComponent(
+                          getCurrentActorId()
+                        )}`,
+                        {
+                          method: 'POST',
+
+                          body:
+                            JSON.stringify(
+                              payload
+                            )
+                        }
+                      )
+
+
+                    if (
+                      !saved ||
+                      !saved.success
+                    ) {
+
+                      throw new Error(
+                        saved?.message ||
+                        'Unable to save lab report.'
+                      )
+
+                    }
+
+
+                    await loadMaternalCareTab(
+                      patientId,
+                      'labs'
+                    )
+
+                  } catch (error) {
+
+                    console.error(
+                      'Save pregnancy lab:',
+                      error
+                    )
+
+                    alert(
+                      error?.message ||
+                      'Unable to save lab report.'
+                    )
+
+                    if (saveButton) {
+
+                      saveButton.disabled =
+                        false
+
+                      saveButton.textContent =
+                        'Save Lab Report'
+
+                    }
+
+                  }
+
+                }
+              )
+
+          }
+        )
+
+        return
+      }
+
+
+            // =================================================
+      // DELIVERY
+      // =================================================
+
+      if (tab === 'delivery') {
+
+        const result =
+          await apiRequest(
+            `/maternal/pregnancies/${encodeURIComponent(
+              pregnancyId
+            )}/delivery?actor_id=${encodeURIComponent(
+              getCurrentActorId()
+            )}`
+          )
+
+        const delivery =
+          result?.delivery ||
+          null
+
+        target.innerHTML = `
+
+          <div class="maternal-module-header">
+
+            <div>
+
+              <div class="dashboard-kicker">
+                DELIVERY
+              </div>
+
+              <h3>
+                Delivery Record
+              </h3>
+
+              <p>
+                Record delivery details and connect
+                the pregnancy to the newborn records.
+              </p>
+
+            </div>
+
+            ${
+              delivery
+                ? ''
+                : `
+                  <button
+                    type="button"
+                    class="primary-action"
+                    id="addDeliveryBtn"
+                  >
+                    + Record Delivery
+                  </button>
+                `
+            }
+
+          </div>
+
+
+          ${
+            delivery
+              ? `
+
+                <div class="delivery-status-banner">
+
+                  <div class="delivery-status-icon">
+                    ✓
+                  </div>
+
+                  <div>
+
+                    <strong>
+                      Delivery recorded
+                    </strong>
+
+                    <span>
+                      Pregnancy #${escapeHtml(
+                        String(
+                          pregnancy.pregnancy_number ||
+                          '—'
+                        )
+                      )}
+                    </span>
+
+                  </div>
+
+                </div>
+
+
+                <div class="delivery-details-grid">
+
+                  <div class="delivery-detail-card">
+
+                    <span>
+                      Delivery Date
+                    </span>
+
+                    <strong>
+                      ${escapeHtml(
+                        delivery.delivery_date ||
+                        'Not recorded'
+                      )}
+                    </strong>
+
+                  </div>
+
+
+                  <div class="delivery-detail-card">
+
+                    <span>
+                      Facility
+                    </span>
+
+                    <strong>
+                      ${escapeHtml(
+                        delivery.facility_id ||
+                        'Not recorded'
+                      )}
+                    </strong>
+
+                  </div>
+
+
+                  <div class="delivery-detail-card">
+
+                    <span>
+                      Delivery Mode
+                    </span>
+
+                    <strong>
+                      ${escapeHtml(
+                        delivery.delivery_mode ||
+                        'Not recorded'
+                      )}
+                    </strong>
+
+                  </div>
+
+
+                  <div class="delivery-detail-card">
+
+                    <span>
+                      Baby Count
+                    </span>
+
+                    <strong>
+                      ${escapeHtml(
+                        String(
+                          delivery.baby_count ||
+                          1
+                        )
+                      )}
+                    </strong>
+
+                  </div>
+
+                </div>
+
+
+                ${
+                  delivery.complications
+                    ? `
+                      <div class="delivery-note delivery-alert">
+
+                        <strong>
+                          Complications
+                        </strong>
+
+                        <span>
+                          ${escapeHtml(
+                            delivery.complications
+                          )}
+                        </span>
+
+                      </div>
+                    `
+                    : ''
+                }
+
+
+                ${
+                  delivery.referral_required
+                    ? `
+                      <div class="maternal-warning">
+                        ↗ Referral required
+                      </div>
+                    `
+                    : ''
+                }
+
+
+                ${
+                  delivery.notes
+                    ? `
+                      <div class="delivery-note">
+
+                        <strong>
+                          Notes
+                        </strong>
+
+                        <span>
+                          ${escapeHtml(
+                            delivery.notes
+                          )}
+                        </span>
+
+                      </div>
+                    `
+                    : ''
+                }
+
+              `
+              : `
+
+                <div class="delivery-planning-card">
+
+                  <div class="delivery-planning-icon">
+                    🏥
+                  </div>
+
+                  <div>
+
+                    <span>
+                      Expected Delivery Date
+                    </span>
+
+                    <strong>
+                      ${escapeHtml(
+                        pregnancy.edd_date ||
+                        'Not recorded'
+                      )}
+                    </strong>
+
+                  </div>
+
+                  <div>
+
+                    <span>
+                      Assigned ASHA
+                    </span>
+
+                    <strong>
+                      ${escapeHtml(
+                        pregnancy.assigned_asha_name ||
+                        'Not assigned'
+                      )}
+                    </strong>
+
+                  </div>
+
+                  <div>
+
+                    <span>
+                      Risk Status
+                    </span>
+
+                    <strong>
+                      ${escapeHtml(
+                        pregnancy.risk_status ||
+                        'Not recorded'
+                      )}
+                    </strong>
+
+                  </div>
+
+                </div>
+
+              `
+          }
+
+
+          <div
+            id="deliveryFormContainer"
+            class="maternal-form-container"
+            hidden
+          ></div>
+
+        `
+
+
+        const addDeliveryButton =
+          document.querySelector(
+            '#addDeliveryBtn'
+          )
+
+        const formContainer =
+          document.querySelector(
+            '#deliveryFormContainer'
+          )
+
+
+        addDeliveryButton?.addEventListener(
+          'click',
+          () => {
+
+            if (!formContainer) {
+              return
+            }
+
+            formContainer.hidden = false
+
+            formContainer.innerHTML = `
+
+              <form
+                id="deliveryForm"
+                class="maternal-record-form"
+              >
+
+                <div class="maternal-form-title">
+                  Record Delivery
+                </div>
+
+
+                <div class="maternal-form-grid">
+
+                  <label>
+                    Delivery Date
+
+                    <input
+                      type="date"
+                      name="delivery_date"
+                      required
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Delivery Mode
+
+                    <select
+                      name="delivery_mode"
+                    >
+
+                      <option value="">
+                        Select mode
+                      </option>
+
+                      <option value="Vaginal">
+                        Vaginal
+                      </option>
+
+                      <option value="C-section">
+                        C-section
+                      </option>
+
+                      <option value="Assisted">
+                        Assisted
+                      </option>
+
+                      <option value="Other">
+                        Other
+                      </option>
+
+                    </select>
+
+                  </label>
+
+
+                  <label>
+                    Baby Count
+
+                    <input
+                      type="number"
+                      name="baby_count"
+                      min="1"
+                      value="1"
+                      required
+                    >
+
+                  </label>
+
+                </div>
+
+
+                <label>
+                  Complications
+
+                  <textarea
+                    name="complications"
+                    rows="3"
+                    placeholder="Record any delivery complications"
+                  ></textarea>
+
+                </label>
+
+
+                <label>
+                  Notes
+
+                  <textarea
+                    name="notes"
+                    rows="3"
+                    placeholder="Additional delivery notes"
+                  ></textarea>
+
+                </label>
+
+
+                <div class="maternal-form-checks">
+
+                  <label>
+
+                    <input
+                      type="checkbox"
+                      name="referral_required"
+                    >
+
+                    Referral required
+
+                  </label>
+
+                </div>
+
+
+                <div class="maternal-form-actions">
+
+                  <button
+                    type="submit"
+                    class="primary-action"
+                  >
+                    Save Delivery
+                  </button>
+
+                  <button
+                    type="button"
+                    class="secondary-action"
+                    id="cancelDeliveryBtn"
+                  >
+                    Cancel
+                  </button>
+
+                </div>
+
+              </form>
+
+            `
+
+
+            document
+              .querySelector(
+                '#cancelDeliveryBtn'
+              )
+              ?.addEventListener(
+                'click',
+                () => {
+
+                  formContainer.hidden = true
+
+                  formContainer.innerHTML = ''
+
+                }
+              )
+
+
+            document
+              .querySelector(
+                '#deliveryForm'
+              )
+              ?.addEventListener(
+                'submit',
+                async event => {
+
+                  event.preventDefault()
+
+                  const form =
+                    event.currentTarget
+
+                  const formData =
+                    new FormData(form)
+
+                  const payload = {
+
+                    delivery_date:
+                      formData.get(
+                        'delivery_date'
+                      ),
+
+                    delivery_mode:
+                      formData.get(
+                        'delivery_mode'
+                      ) || null,
+
+                    baby_count:
+                      Number(
+                        formData.get(
+                          'baby_count'
+                        ) || 1
+                      ),
+
+                    complications:
+                      formData.get(
+                        'complications'
+                      ) || null,
+
+                    referral_required:
+                      formData.get(
+                        'referral_required'
+                      ) === 'on',
+
+                    notes:
+                      formData.get(
+                        'notes'
+                      ) || null
+
+                  }
+
+
+                  const saveButton =
+                    form.querySelector(
+                      'button[type="submit"]'
+                    )
+
+                  if (saveButton) {
+
+                    saveButton.disabled = true
+
+                    saveButton.textContent =
+                      'Saving...'
+
+                  }
+
+
+                  try {
+
+                    const saved =
+                      await apiRequest(
+                        `/maternal/pregnancies/${encodeURIComponent(
+                          pregnancyId
+                        )}/delivery?actor_id=${encodeURIComponent(
+                          getCurrentActorId()
+                        )}`,
+                        {
+                          method: 'POST',
+
+                          body:
+                            JSON.stringify(
+                              payload
+                            )
+                        }
+                      )
+
+
+                    if (
+                      !saved ||
+                      !saved.success
+                    ) {
+
+                      throw new Error(
+                        saved?.message ||
+                        'Unable to save delivery.'
+                      )
+
+                    }
+
+
+                    await loadMaternalCareTab(
+                      patientId,
+                      'delivery'
+                    )
+
+                  } catch (error) {
+
+                    console.error(
+                      'Save delivery:',
+                      error
+                    )
+
+                    alert(
+                      error?.message ||
+                      'Unable to save delivery.'
+                    )
+
+                    if (saveButton) {
+
+                      saveButton.disabled =
+                        false
+
+                      saveButton.textContent =
+                        'Save Delivery'
+
+                    }
+
+                  }
+
+                }
+              )
+
+          }
+        )
+
+        return
+      }
+
+            // =================================================
+      // POSTNATAL CARE
+      // =================================================
+
+      if (tab === 'postnatal') {
+
+        const result =
+          await apiRequest(
+            `/maternal/pregnancies/${encodeURIComponent(
+              pregnancyId
+            )}/postnatal?actor_id=${encodeURIComponent(
+              getCurrentActorId()
+            )}`
+          )
+
+        const visits =
+          result?.visits ||
+          []
+
+        const completed =
+          result?.summary?.completed ||
+          visits.length
+
+        target.innerHTML = `
+
+          <div class="maternal-module-header">
+
+            <div>
+
+              <div class="dashboard-kicker">
+                POSTNATAL CARE
+              </div>
+
+              <h3>
+                Mother & Newborn Follow-up
+              </h3>
+
+              <p>
+                Track post-delivery follow-up for both
+                the mother and newborn.
+              </p>
+
+            </div>
+
+            <button
+              type="button"
+              class="primary-action"
+              id="addPostnatalVisitBtn"
+            >
+              + Record Postnatal Visit
+            </button>
+
+          </div>
+
+
+          <div class="postnatal-summary-grid">
+
+            <div class="postnatal-summary-card">
+
+              <span>
+                Visits Recorded
+              </span>
+
+              <strong>
+                ${completed}
+              </strong>
+
+            </div>
+
+            <div class="postnatal-summary-card">
+
+              <span>
+                Mother Follow-up
+              </span>
+
+              <strong>
+                ${
+                  visits.some(
+                    visit =>
+                      visit.maternal_status
+                  )
+                    ? 'Recorded'
+                    : 'Pending'
+                }
+              </strong>
+
+            </div>
+
+            <div class="postnatal-summary-card">
+
+              <span>
+                Newborn Follow-up
+              </span>
+
+              <strong>
+                ${
+                  visits.some(
+                    visit =>
+                      visit.newborn_status
+                  )
+                    ? 'Recorded'
+                    : 'Pending'
+                }
+              </strong>
+
+            </div>
+
+            <div class="postnatal-summary-card">
+
+              <span>
+                Family Planning
+              </span>
+
+              <strong>
+                ${
+                  visits.some(
+                    visit =>
+                      visit.family_planning_counselling
+                  )
+                    ? 'Discussed'
+                    : 'Pending'
+                }
+              </strong>
+
+            </div>
+
+          </div>
+
+
+          <div class="postnatal-timeline">
+
+            ${
+              visits.length
+                ? visits
+                    .map(
+                      visit => `
+
+                        <div class="postnatal-visit-card">
+
+                          <div class="postnatal-visit-marker">
+                            ${escapeHtml(
+                              String(
+                                visit.visit_number
+                              )
+                            )}
+                          </div>
+
+                          <div class="postnatal-visit-content">
+
+                            <div class="postnatal-visit-top">
+
+                              <div>
+
+                                <strong>
+                                  Postnatal Visit ${
+                                    escapeHtml(
+                                      String(
+                                        visit.visit_number
+                                      )
+                                    )
+                                  }
+                                </strong>
+
+                                <span>
+                                  ${escapeHtml(
+                                    visit.visit_date ||
+                                    'Date not recorded'
+                                  )}
+                                </span>
+
+                              </div>
+
+                              <span
+                                class="
+                                  maternal-status-pill
+                                  done
+                                "
+                              >
+                                Recorded
+                              </span>
+
+                            </div>
+
+
+                            ${
+                              visit.maternal_status
+                                ? `
+                                  <div class="postnatal-info-block">
+
+                                    <strong>
+                                      Mother
+                                    </strong>
+
+                                    <span>
+                                      ${escapeHtml(
+                                        visit.maternal_status
+                                      )}
+                                    </span>
+
+                                  </div>
+                                `
+                                : ''
+                            }
+
+
+                            ${
+                              visit.newborn_status
+                                ? `
+                                  <div class="postnatal-info-block">
+
+                                    <strong>
+                                      Newborn
+                                    </strong>
+
+                                    <span>
+                                      ${escapeHtml(
+                                        visit.newborn_status
+                                      )}
+                                    </span>
+
+                                  </div>
+                                `
+                                : ''
+                            }
+
+
+                            ${
+                              visit.family_planning_counselling
+                                ? `
+                                  <span class="postnatal-tag">
+                                    ✓ Family-planning counselling recorded
+                                  </span>
+                                `
+                                : ''
+                            }
+
+
+                            ${
+                              visit.referral_required
+                                ? `
+                                  <div class="maternal-warning">
+                                    ↗ Referral required
+                                  </div>
+                                `
+                                : ''
+                            }
+
+
+                            ${
+                              visit.notes
+                                ? `
+                                  <p class="postnatal-notes">
+                                    ${escapeHtml(
+                                      visit.notes
+                                    )}
+                                  </p>
+                                `
+                                : ''
+                            }
+
+                          </div>
+
+                        </div>
+
+                      `
+                    )
+                    .join('')
+                : `
+                  <div class="maternal-care-empty">
+
+                    <div class="maternal-care-empty-icon">
+                      🍼
+                    </div>
+
+                    <h3>
+                      No postnatal visits recorded
+                    </h3>
+
+                    <p>
+                      Record the first post-delivery
+                      follow-up visit.
+                    </p>
+
+                  </div>
+                `
+            }
+
+          </div>
+
+
+          <div
+            id="postnatalFormContainer"
+            class="maternal-form-container"
+            hidden
+          ></div>
+
+        `
+
+
+        const addPostnatalButton =
+          document.querySelector(
+            '#addPostnatalVisitBtn'
+          )
+
+        const formContainer =
+          document.querySelector(
+            '#postnatalFormContainer'
+          )
+
+
+        addPostnatalButton?.addEventListener(
+          'click',
+          () => {
+
+            if (!formContainer) {
+              return
+            }
+
+            formContainer.hidden = false
+
+            formContainer.innerHTML = `
+
+              <form
+                id="postnatalVisitForm"
+                class="maternal-record-form"
+              >
+
+                <div class="maternal-form-title">
+                  Record Postnatal Visit
+                </div>
+
+
+                <div class="maternal-form-grid">
+
+                  <label>
+                    Visit Number
+
+                    <input
+                      type="number"
+                      name="visit_number"
+                      min="1"
+                      value="${
+                        visits.length + 1
+                      }"
+                      required
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Visit Type
+
+                    <select name="visit_type">
+
+                      <option value="Postnatal">
+                        Postnatal
+                      </option>
+
+                      <option value="Mother Follow-up">
+                        Mother Follow-up
+                      </option>
+
+                      <option value="Newborn Follow-up">
+                        Newborn Follow-up
+                      </option>
+
+                      <option value="Combined Follow-up">
+                        Combined Follow-up
+                      </option>
+
+                    </select>
+
+                  </label>
+
+
+                  <label>
+                    Visit Date
+
+                    <input
+                      type="date"
+                      name="visit_date"
+                      required
+                    >
+
+                  </label>
+
+                </div>
+
+
+                <label>
+                  Maternal Status
+
+                  <textarea
+                    name="maternal_status"
+                    rows="3"
+                    placeholder="Mother's current status"
+                  ></textarea>
+
+                </label>
+
+
+                <label>
+                  Newborn Status
+
+                  <textarea
+                    name="newborn_status"
+                    rows="3"
+                    placeholder="Newborn's current status"
+                  ></textarea>
+
+                </label>
+
+
+                <label>
+                  Notes
+
+                  <textarea
+                    name="notes"
+                    rows="3"
+                    placeholder="Additional notes"
+                  ></textarea>
+
+                </label>
+
+
+                <div class="maternal-form-checks">
+
+                  <label>
+
+                    <input
+                      type="checkbox"
+                      name="family_planning_counselling"
+                    >
+
+                    Family-planning counselling recorded
+
+                  </label>
+
+
+                  <label>
+
+                    <input
+                      type="checkbox"
+                      name="referral_required"
+                    >
+
+                    Referral required
+
+                  </label>
+
+                </div>
+
+
+                <div class="maternal-form-actions">
+
+                  <button
+                    type="submit"
+                    class="primary-action"
+                  >
+                    Save Postnatal Visit
+                  </button>
+
+                  <button
+                    type="button"
+                    class="secondary-action"
+                    id="cancelPostnatalBtn"
+                  >
+                    Cancel
+                  </button>
+
+                </div>
+
+              </form>
+
+            `
+
+
+            document
+              .querySelector(
+                '#cancelPostnatalBtn'
+              )
+              ?.addEventListener(
+                'click',
+                () => {
+
+                  formContainer.hidden =
+                    true
+
+                  formContainer.innerHTML =
+                    ''
+
+                }
+              )
+
+
+            document
+              .querySelector(
+                '#postnatalVisitForm'
+              )
+              ?.addEventListener(
+                'submit',
+                async event => {
+
+                  event.preventDefault()
+
+                  const form =
+                    event.currentTarget
+
+                  const formData =
+                    new FormData(form)
+
+                  const payload = {
+
+                    visit_number:
+                      Number(
+                        formData.get(
+                          'visit_number'
+                        ) || 1
+                      ),
+
+                    visit_type:
+                      formData.get(
+                        'visit_type'
+                      ) || 'Postnatal',
+
+                    visit_date:
+                      formData.get(
+                        'visit_date'
+                      ) || null,
+
+                    maternal_status:
+                      formData.get(
+                        'maternal_status'
+                      ) || null,
+
+                    newborn_status:
+                      formData.get(
+                        'newborn_status'
+                      ) || null,
+
+                    family_planning_counselling:
+                      formData.get(
+                        'family_planning_counselling'
+                      ) === 'on',
+
+                    referral_required:
+                      formData.get(
+                        'referral_required'
+                      ) === 'on',
+
+                    notes:
+                      formData.get(
+                        'notes'
+                      ) || null
+
+                  }
+
+
+                  const saveButton =
+                    form.querySelector(
+                      'button[type="submit"]'
+                    )
+
+                  if (saveButton) {
+
+                    saveButton.disabled =
+                      true
+
+                    saveButton.textContent =
+                      'Saving...'
+
+                  }
+
+
+                  try {
+
+                    const saved =
+                      await apiRequest(
+                        `/maternal/pregnancies/${encodeURIComponent(
+                          pregnancyId
+                        )}/postnatal?actor_id=${encodeURIComponent(
+                          getCurrentActorId()
+                        )}`,
+                        {
+                          method: 'POST',
+
+                          body:
+                            JSON.stringify(
+                              payload
+                            )
+                        }
+                      )
+
+
+                    if (
+                      !saved ||
+                      !saved.success
+                    ) {
+
+                      throw new Error(
+                        saved?.message ||
+                        'Unable to save postnatal visit.'
+                      )
+
+                    }
+
+
+                    await loadMaternalCareTab(
+                      patientId,
+                      'postnatal'
+                    )
+
+                  } catch (error) {
+
+                    console.error(
+                      'Save postnatal visit:',
+                      error
+                    )
+
+                    alert(
+                      error?.message ||
+                      'Unable to save postnatal visit.'
+                    )
+
+                    if (saveButton) {
+
+                      saveButton.disabled =
+                        false
+
+                      saveButton.textContent =
+                        'Save Postnatal Visit'
+
+                    }
+
+                  }
+
+                }
+              )
+
+          }
+        )
+
+        return
+      }
+
+      // =================================================
+      // CHILDREN 0–6 YEARS
+      // =================================================
+
+      if (tab === 'children') {
+
+        const result =
+          await apiRequest(
+            `/maternal/patients/${encodeURIComponent(
+              patientId
+            )}/children?actor_id=${encodeURIComponent(
+              getCurrentActorId()
+            )}`
+          )
+
+        const children =
+          result?.children ||
+          []
+
+        target.innerHTML = `
+
+          <div class="maternal-module-header">
+
+            <div>
+
+              <div class="dashboard-kicker">
+                CHILD HEALTH · 0–6 YEARS
+              </div>
+
+              <h3>
+                Children
+              </h3>
+
+              <p>
+                Keep every child linked to the correct
+                pregnancy without overwriting family history.
+              </p>
+
+            </div>
+
+            <button
+              type="button"
+              class="primary-action"
+              id="addChildBtn"
+            >
+              + Register Child
+            </button>
+
+          </div>
+
+
+          <div class="child-care-summary">
+
+            <div class="child-summary-card">
+
+              <span>
+                Children
+              </span>
+
+              <strong>
+                ${children.length}
+              </strong>
+
+            </div>
+
+            <div class="child-summary-card">
+
+              <span>
+                Age Range
+              </span>
+
+              <strong>
+                0–6 Years
+              </strong>
+
+            </div>
+
+            <div class="child-summary-card">
+
+              <span>
+                Vaccination Records
+              </span>
+
+              <strong>
+                ${
+                  children.reduce(
+                    (
+                      total,
+                      child
+                    ) =>
+                      total +
+                      (
+                        child
+                          .immunization_summary
+                          ?.completed ||
+                        0
+                      ),
+                    0
+                  )
+                }
+              </strong>
+
+            </div>
+
+            <div class="child-summary-card">
+
+              <span>
+                Family Tracking
+              </span>
+
+              <strong>
+                ${
+                  children.length
+                    ? 'Active'
+                    : 'Ready'
+                }
+              </strong>
+
+            </div>
+
+          </div>
+
+
+          <div class="children-care-list">
+
+            ${
+              children.length
+                ? children
+                    .map(
+                      child => {
+
+                        const age =
+                          child.age ||
+                          {}
+
+                        const ageText =
+                          age.years !== undefined
+                            ? `${age.years}y ${
+                                age.months || 0
+                              }m`
+                            : 'Age unavailable'
+
+                        const vaccineSummary =
+                          child.immunization_summary ||
+                          {}
+
+                        const vaccineTotal =
+                          vaccineSummary.total ||
+                          0
+
+                        const vaccineCompleted =
+                          vaccineSummary.completed ||
+                          0
+
+                        const vaccinePercent =
+                          vaccineTotal > 0
+                            ? Math.round(
+                                (
+                                  vaccineCompleted /
+                                  vaccineTotal
+                                ) * 100
+                              )
+                            : 0
+
+                        return `
+
+                          <div
+                            class="child-care-card"
+                            data-child-id="${escapeHtml(
+                              child.child_id ||
+                              ''
+                            )}"
+                          >
+
+                            <div class="child-care-avatar">
+                              👶
+                            </div>
+
+
+                            <div class="child-care-main">
+
+                              <div
+                                class="child-care-top"
+                              >
+
+                                <div>
+
+                                  <strong>
+                                    ${escapeHtml(
+                                      child.name ||
+                                      'Child'
+                                    )}
+                                  </strong>
+
+                                  <span>
+                                    ${
+                                      child.sex
+                                        ? escapeHtml(
+                                            child.sex
+                                          )
+                                        : ''
+                                    }
+
+                                    ${
+                                      child.sex &&
+                                      child.date_of_birth
+                                        ? ' · '
+                                        : ''
+                                    }
+
+                                    ${
+                                      child.date_of_birth
+                                        ? escapeHtml(
+                                            child.date_of_birth
+                                          )
+                                        : ''
+                                    }
+                                  </span>
+
+                                </div>
+
+                                <span
+                                  class="
+                                    child-age-badge
+                                  "
+                                >
+                                  ${escapeHtml(
+                                    ageText
+                                  )}
+                                </span>
+
+                              </div>
+
+
+                              <div
+                                class="
+                                  child-care-meta
+                                "
+                              >
+
+                                <span>
+                                  Pregnancy #${
+                                    escapeHtml(
+                                      String(
+                                        child.pregnancy_number ||
+                                        '—'
+                                      )
+                                    )
+                                  }
+                                </span>
+
+                                <span>
+                                  ID:
+                                  ${escapeHtml(
+                                    child.child_id ||
+                                    '—'
+                                  )}
+                                </span>
+
+                              </div>
+
+
+                              <div
+                                class="
+                                  child-immunization-mini
+                                "
+                              >
+
+                                <div
+                                  class="
+                                    child-immunization-mini-top
+                                  "
+                                >
+
+                                  <span>
+                                    Immunization tracking
+                                  </span>
+
+                                  <strong>
+                                    ${
+                                      vaccineTotal
+                                        ? `${vaccinePercent}%`
+                                        : 'Not started'
+                                    }
+                                  </strong>
+
+                                </div>
+
+                                <div
+                                  class="
+                                    child-progress-track
+                                  "
+                                >
+                                  <div
+                                    class="
+                                      child-progress-fill
+                                    "
+                                    style="
+                                      width:${vaccinePercent}%;
+                                    "
+                                  ></div>
+                                </div>
+
+                              </div>
+
+
+                              <div
+                                class="
+                                  child-care-actions
+                                "
+                              >
+
+                                <button
+                                  type="button"
+                                  class="secondary-action child-vaccines-btn"
+                                  data-child-id="${escapeHtml(
+                                    child.child_id ||
+                                    ''
+                                  )}"
+                                >
+                                  💉 Vaccines
+                                </button>
+
+                                <button
+                                  type="button"
+                                  class="secondary-action child-health-btn"
+                                  data-child-id="${escapeHtml(
+                                    child.child_id ||
+                                    ''
+                                  )}"
+                                >
+                                  📈 Growth & Health
+                                </button>
+
+                                <button
+                                  type="button"
+                                  class="secondary-action child-labs-btn"
+                                  data-child-id="${escapeHtml(
+                                    child.child_id ||
+                                    ''
+                                  )}"
+                                >
+                                  🧪 Labs
+                                </button>
+
+                              </div>
+
+                            </div>
+
+                          </div>
+
+                        `
+                      }
+                    )
+                    .join('')
+                : `
+
+                  <div class="maternal-care-empty">
+
+                    <div
+                      class="maternal-care-empty-icon"
+                    >
+                      👶
+                    </div>
+
+                    <h3>
+                      No children registered
+                    </h3>
+
+                    <p>
+                      After a delivery is recorded,
+                      register the newborn here and continue
+                      the 0–6 year care journey.
+                    </p>
+
+                    <button
+                      type="button"
+                      class="primary-action"
+                      id="addChildBtnEmpty"
+                    >
+                      + Register Child
+                    </button>
+
+                  </div>
+
+                `
+            }
+
+          </div>
+
+
+          <div
+            id="childRegistrationFormContainer"
+            class="maternal-form-container"
+            hidden
+          ></div>
+
+        `
+
+
+        const addChildButton =
+          document.querySelector(
+            '#addChildBtn'
+          ) ||
+          document.querySelector(
+            '#addChildBtnEmpty'
+          )
+
+        const formContainer =
+          document.querySelector(
+            '#childRegistrationFormContainer'
+          )
+
+
+        addChildButton?.addEventListener(
+          'click',
+          () => {
+
+            if (!formContainer) {
+              return
+            }
+
+            formContainer.hidden = false
+
+            const pregnancyOptions =
+              pregnancies
+                .map(
+                  item => `
+                    <option
+                      value="${escapeHtml(
+                        String(
+                          item.id
+                        )
+                      )}"
+                    >
+                      Pregnancy #${escapeHtml(
+                        String(
+                          item.pregnancy_number
+                        )
+                      )} — ${
+                        escapeHtml(
+                          item.status ||
+                          'Recorded'
+                        )
+                      }
+                    </option>
+                  `
+                )
+                .join('')
+
+
+            formContainer.innerHTML = `
+
+              <form
+                id="childRegistrationForm"
+                class="maternal-record-form"
+              >
+
+                <div class="maternal-form-title">
+                  Register Child
+                </div>
+
+
+                <div class="maternal-rh-info">
+
+                  <strong>
+                    Link this child to a pregnancy
+                  </strong>
+
+                  <br>
+
+                  The correct pregnancy must already have
+                  a delivery record.
+
+                </div>
+
+
+                <div class="maternal-form-grid">
+
+                  <label>
+                    Pregnancy
+
+                    <select
+                      name="pregnancy_id"
+                      required
+                    >
+
+                      ${
+                        pregnancyOptions ||
+                        `
+                          <option value="">
+                            No pregnancy records available
+                          </option>
+                        `
+                      }
+
+                    </select>
+
+                  </label>
+
+
+                  <label>
+                    Child Name
+
+                    <input
+                      type="text"
+                      name="name"
+                      placeholder="Child name"
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Date of Birth
+
+                    <input
+                      type="date"
+                      name="date_of_birth"
+                      required
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Sex
+
+                    <select name="sex">
+
+                      <option value="">
+                        Select
+                      </option>
+
+                      <option value="Male">
+                        Male
+                      </option>
+
+                      <option value="Female">
+                        Female
+                      </option>
+
+                      <option value="Other">
+                        Other
+                      </option>
+
+                    </select>
+
+                  </label>
+
+
+                  <label>
+                    Birth Weight
+
+                    <input
+                      type="text"
+                      name="birth_weight"
+                      placeholder="e.g. 2.8 kg"
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Blood Group
+
+                    <input
+                      type="text"
+                      name="blood_group"
+                      placeholder="Optional"
+                    >
+
+                  </label>
+
+                </div>
+
+
+                <label>
+                  Notes
+
+                  <textarea
+                    name="notes"
+                    rows="3"
+                    placeholder="Additional newborn notes"
+                  ></textarea>
+
+                </label>
+
+
+                <div
+                  class="maternal-form-actions"
+                >
+
+                  <button
+                    type="submit"
+                    class="primary-action"
+                  >
+                    Register Child
+                  </button>
+
+                  <button
+                    type="button"
+                    class="secondary-action"
+                    id="cancelChildRegistrationBtn"
+                  >
+                    Cancel
+                  </button>
+
+                </div>
+
+              </form>
+
+            `
+
+
+            document
+              .querySelector(
+                '#cancelChildRegistrationBtn'
+              )
+              ?.addEventListener(
+                'click',
+                () => {
+
+                  formContainer.hidden =
+                    true
+
+                  formContainer.innerHTML =
+                    ''
+
+                }
+              )
+
+
+            document
+              .querySelector(
+                '#childRegistrationForm'
+              )
+              ?.addEventListener(
+                'submit',
+                async event => {
+
+                  event.preventDefault()
+
+                  const form =
+                    event.currentTarget
+
+                  const formData =
+                    new FormData(form)
+
+                  const selectedPregnancyId =
+                    formData.get(
+                      'pregnancy_id'
+                    )
+
+                  const payload = {
+
+                    name:
+                      formData.get(
+                        'name'
+                      ) || null,
+
+                    date_of_birth:
+                      formData.get(
+                        'date_of_birth'
+                      ),
+
+                    sex:
+                      formData.get(
+                        'sex'
+                      ) || null,
+
+                    birth_weight:
+                      formData.get(
+                        'birth_weight'
+                      ) || null,
+
+                    blood_group:
+                      formData.get(
+                        'blood_group'
+                      ) || null,
+
+                    notes:
+                      formData.get(
+                        'notes'
+                      ) || null
+
+                  }
+
+
+                  const saveButton =
+                    form.querySelector(
+                      'button[type="submit"]'
+                    )
+
+                  if (saveButton) {
+
+                    saveButton.disabled =
+                      true
+
+                    saveButton.textContent =
+                      'Registering...'
+
+                  }
+
+
+                  try {
+
+                    const saved =
+                      await apiRequest(
+                        `/maternal/pregnancies/${encodeURIComponent(
+                          selectedPregnancyId
+                        )}/children?actor_id=${encodeURIComponent(
+                          getCurrentActorId()
+                        )}`,
+                        {
+                          method: 'POST',
+
+                          body:
+                            JSON.stringify(
+                              payload
+                            )
+                        }
+                      )
+
+
+                    if (
+                      !saved ||
+                      !saved.success
+                    ) {
+
+                      throw new Error(
+                        saved?.message ||
+                        'Unable to register child.'
+                      )
+
+                    }
+
+
+                    await loadMaternalCareTab(
+                      patientId,
+                      'children'
+                    )
+
+                  } catch (error) {
+
+                    console.error(
+                      'Register child:',
+                      error
+                    )
+
+                    alert(
+                      error?.message ||
+                      'Unable to register child.'
+                    )
+
+                    if (saveButton) {
+
+                      saveButton.disabled =
+                        false
+
+                      saveButton.textContent =
+                        'Register Child'
+
+                    }
+
+                  }
+
+                }
+              )
+
+          }
+        )
+
+
+        document
+          .querySelectorAll(
+            '.child-vaccines-btn'
+          )
+          .forEach(
+            button => {
+
+              button.addEventListener(
+                'click',
+                () => {
+
+                  window.dwitSelectedChildId =
+                    button.dataset.childId || ''
+
+                  const vaccineTab =
+                    document.querySelector(
+                      '.maternal-care-tab[data-maternal-tab="vaccines"]'
+                    )
+
+                  vaccineTab?.click()
+
+                }
+              )
+
+            }
+          )
+
+
+        document
+          .querySelectorAll(
+            '.child-health-btn'
+          )
+          .forEach(
+            button => {
+
+              button.addEventListener(
+                'click',
+                () => {
+
+                  window.dwitSelectedChildId =
+                    button.dataset.childId || ''
+
+                 
+                }
+              )
+
+            }
+          )
+
+
+        document
+          .querySelectorAll(
+            '.child-labs-btn'
+          )
+          .forEach(
+            button => {
+
+              button.addEventListener(
+                'click',
+                () => {
+
+                  window.dwitSelectedChildId =
+                    button.dataset.childId || ''
+
+                  alert(
+                    'Child-linked lab reports will open from the Labs module.'
+                  )
+
+                }
+              )
+
+            }
+          )
+
+
+        return
+      }
+
+          // =================================================
+      // CHILD VACCINATIONS
+      // =================================================
+
+      if (tab === 'child-vaccines') {
+
+        const childId =
+          window.dwitSelectedChildId || ''
+
+        if (!childId) {
+
+          target.innerHTML = `
+            <div class="maternal-care-empty">
+
+              <div class="maternal-care-empty-icon">
+                👶
+              </div>
+
+              <h3>
+                Select a child first
+              </h3>
+
+              <p>
+                Open Children 0–6 and select a child
+                to view vaccination records.
+              </p>
+
+            </div>
+          `
+
+          return
+        }
+
+        const result =
+          await apiRequest(
+            `/maternal/children/${encodeURIComponent(
+              childId
+            )}/immunizations?actor_id=${encodeURIComponent(
+              getCurrentActorId()
+            )}`
+          )
+
+        const vaccinations =
+          result?.immunizations ||
+          []
+
+        const summary =
+          result?.summary ||
+          {
+            total: 0,
+            completed: 0,
+            pending: 0,
+            missed: 0
+          }
+
+        target.innerHTML = `
+
+          <div class="maternal-module-header">
+
+            <div>
+
+              <div class="dashboard-kicker">
+                CHILD IMMUNIZATION · 0–6 YEARS
+              </div>
+
+              <h3>
+                Child Vaccination Tracker
+              </h3>
+
+              <p>
+                Track vaccination records for the
+                selected child.
+              </p>
+
+            </div>
+
+            <button
+              type="button"
+              class="primary-action"
+              id="addChildVaccineBtn"
+            >
+              + Record Vaccination
+            </button>
+
+          </div>
+
+
+          <div class="child-care-summary">
+
+            <div class="child-summary-card">
+              <span>Total</span>
+              <strong>
+                ${summary.total}
+              </strong>
+            </div>
+
+            <div class="child-summary-card">
+              <span>Completed</span>
+              <strong>
+                ${summary.completed}
+              </strong>
+            </div>
+
+            <div class="child-summary-card">
+              <span>Pending</span>
+              <strong>
+                ${summary.pending}
+              </strong>
+            </div>
+
+            <div class="child-summary-card">
+              <span>Missed</span>
+              <strong>
+                ${summary.missed}
+              </strong>
+            </div>
+
+          </div>
+
+
+          <div class="child-vaccine-list">
+
+            ${
+              vaccinations.length
+                ? vaccinations
+                    .map(
+                      vaccine => {
+
+                        const status =
+                          String(
+                            vaccine.status ||
+                            'Pending'
+                          )
+
+                        return `
+                          <div
+                            class="
+                              child-vaccine-card
+                              ${
+                                status
+                                  .toLowerCase()
+                                  .replace(
+                                    /\s+/g,
+                                    '-'
+                                  )
+                              }
+                            "
+                          >
+
+                            <div
+                              class="child-vaccine-icon"
+                            >
+                              💉
+                            </div>
+
+                            <div
+                              class="child-vaccine-main"
+                            >
+
+                              <div
+                                class="
+                                  child-vaccine-top
+                                "
+                              >
+
+                                <div>
+
+                                  <strong>
+                                    ${escapeHtml(
+                                      vaccine.vaccine_name ||
+                                      'Vaccine'
+                                    )}
+                                  </strong>
+
+                                  <span>
+                                    ${escapeHtml(
+                                      vaccine.dose ||
+                                      'Dose'
+                                    )}
+                                  </span>
+
+                                </div>
+
+                                <span
+                                  class="
+                                    maternal-status-pill
+                                    ${
+                                      status ===
+                                      'Completed'
+                                        ? 'done'
+                                        : status ===
+                                          'Missed'
+                                          ? 'missed'
+                                          : 'due'
+                                    }
+                                  "
+                                >
+                                  ${escapeHtml(
+                                    status
+                                  )}
+                                </span>
+
+                              </div>
+
+
+                              <div
+                                class="
+                                  child-vaccine-details
+                                "
+                              >
+
+                                ${
+                                  vaccine.scheduled_date
+                                    ? `
+                                      <span>
+                                        📅 Scheduled:
+                                        ${escapeHtml(
+                                          vaccine.scheduled_date
+                                        )}
+                                      </span>
+                                    `
+                                    : ''
+                                }
+
+                                ${
+                                  vaccine.administered_date
+                                    ? `
+                                      <span>
+                                        ✓ Administered:
+                                        ${escapeHtml(
+                                          vaccine.administered_date
+                                        )}
+                                      </span>
+                                    `
+                                    : ''
+                                }
+
+                                ${
+                                  vaccine.notes
+                                    ? `
+                                      <span>
+                                        📝
+                                        ${escapeHtml(
+                                          vaccine.notes
+                                        )}
+                                      </span>
+                                    `
+                                    : ''
+                                }
+
+                              </div>
+
+                            </div>
+
+                          </div>
+                        `
+                      }
+                    )
+                    .join('')
+                : `
+                  <div class="maternal-care-empty">
+
+                    <div class="maternal-care-empty-icon">
+                      💉
+                    </div>
+
+                    <h3>
+                      No child vaccinations recorded
+                    </h3>
+
+                    <p>
+                      Record the child's vaccination
+                      history here.
+                    </p>
+
+                  </div>
+                `
+            }
+
+          </div>
+
+
+          <div
+            id="childVaccineFormContainer"
+            class="maternal-form-container"
+            hidden
+          ></div>
+
+        `
+
+
+        const addButton =
+          document.querySelector(
+            '#addChildVaccineBtn'
+          )
+
+        const formContainer =
+          document.querySelector(
+            '#childVaccineFormContainer'
+          )
+
+
+        addButton?.addEventListener(
+          'click',
+          () => {
+
+            if (!formContainer) {
+              return
+            }
+
+            formContainer.hidden = false
+
+            formContainer.innerHTML = `
+
+              <form
+                id="childVaccineForm"
+                class="maternal-record-form"
+              >
+
+                <div class="maternal-form-title">
+                  Record Child Vaccination
+                </div>
+
+
+                <div class="maternal-form-grid">
+
+                  <label>
+                    Vaccine Name
+
+                    <input
+                      type="text"
+                      name="vaccine_name"
+                      placeholder="Vaccine name"
+                      required
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Dose
+
+                    <input
+                      type="text"
+                      name="dose"
+                      placeholder="Dose"
+                      required
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Scheduled Date
+
+                    <input
+                      type="date"
+                      name="scheduled_date"
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Administered Date
+
+                    <input
+                      type="date"
+                      name="administered_date"
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Status
+
+                    <select name="status">
+
+                      <option value="Pending">
+                        Pending
+                      </option>
+
+                      <option value="Completed">
+                        Completed
+                      </option>
+
+                      <option value="Missed">
+                        Missed
+                      </option>
+
+                      <option value="Not Due">
+                        Not Due
+                      </option>
+
+                      <option value="Cancelled">
+                        Cancelled
+                      </option>
+
+                    </select>
+
+                  </label>
+
+                </div>
+
+
+                <label>
+                  Notes
+
+                  <textarea
+                    name="notes"
+                    rows="3"
+                    placeholder="Optional notes"
+                  ></textarea>
+
+                </label>
+
+
+                <div
+                  class="maternal-form-actions"
+                >
+
+                  <button
+                    type="submit"
+                    class="primary-action"
+                  >
+                    Save Vaccination
+                  </button>
+
+                  <button
+                    type="button"
+                    class="secondary-action"
+                    id="cancelChildVaccineBtn"
+                  >
+                    Cancel
+                  </button>
+
+                </div>
+
+              </form>
+
+            `
+
+
+            document
+              .querySelector(
+                '#cancelChildVaccineBtn'
+              )
+              ?.addEventListener(
+                'click',
+                () => {
+
+                  formContainer.hidden =
+                    true
+
+                  formContainer.innerHTML =
+                    ''
+
+                }
+              )
+
+
+            document
+              .querySelector(
+                '#childVaccineForm'
+              )
+              ?.addEventListener(
+                'submit',
+                async event => {
+
+                  event.preventDefault()
+
+                  const form =
+                    event.currentTarget
+
+                  const formData =
+                    new FormData(form)
+
+                  const payload = {
+
+                    vaccine_name:
+                      formData.get(
+                        'vaccine_name'
+                      ),
+
+                    dose:
+                      formData.get(
+                        'dose'
+                      ),
+
+                    scheduled_date:
+                      formData.get(
+                        'scheduled_date'
+                      ) || null,
+
+                    administered_date:
+                      formData.get(
+                        'administered_date'
+                      ) || null,
+
+                    status:
+                      formData.get(
+                        'status'
+                      ) || 'Pending',
+
+                    notes:
+                      formData.get(
+                        'notes'
+                      ) || null
+
+                  }
+
+                  const saveButton =
+                    form.querySelector(
+                      'button[type="submit"]'
+                    )
+
+                  if (saveButton) {
+
+                    saveButton.disabled =
+                      true
+
+                    saveButton.textContent =
+                      'Saving...'
+
+                  }
+
+                  try {
+
+                    const saved =
+                      await apiRequest(
+                        `/maternal/children/${encodeURIComponent(
+                          childId
+                        )}/immunizations?actor_id=${encodeURIComponent(
+                          getCurrentActorId()
+                        )}`,
+                        {
+                          method: 'POST',
+
+                          body:
+                            JSON.stringify(
+                              payload
+                            )
+                        }
+                      )
+
+                    if (
+                      !saved ||
+                      !saved.success
+                    ) {
+                      throw new Error(
+                        saved?.message ||
+                        'Unable to save vaccination.'
+                      )
+                    }
+
+                    await loadMaternalCareTab(
+                      patientId,
+                      'child-vaccines'
+                    )
+
+                  } catch (error) {
+
+                    console.error(
+                      'Save child vaccination:',
+                      error
+                    )
+
+                    alert(
+                      error?.message ||
+                      'Unable to save vaccination.'
+                    )
+
+                    if (saveButton) {
+
+                      saveButton.disabled =
+                        false
+
+                      saveButton.textContent =
+                        'Save Vaccination'
+
+                    }
+
+                  }
+
+                }
+              )
+
+          }
+        )
+
+        return
+      }
+
+
+            // =================================================
+      // CHILD GROWTH & HEALTH
+      // =================================================
+
+      if (tab === 'child-health') {
+
+        const childId =
+          window.dwitSelectedChildId || ''
+
+        if (!childId) {
+
+          target.innerHTML = `
+            <div class="maternal-care-empty">
+
+              <div class="maternal-care-empty-icon">
+                👶
+              </div>
+
+              <h3>
+                Select a child first
+              </h3>
+
+              <p>
+                Open Children 0–6 and select a child
+                to view growth and health records.
+              </p>
+
+            </div>
+          `
+
+          return
+        }
+
+        const result =
+          await apiRequest(
+            `/maternal/children/${encodeURIComponent(
+              childId
+            )}/health-visits?actor_id=${encodeURIComponent(
+              getCurrentActorId()
+            )}`
+          )
+
+        const visits =
+          result?.visits ||
+          []
+
+        target.innerHTML = `
+
+          <div class="maternal-module-header">
+
+            <div>
+
+              <div class="dashboard-kicker">
+                CHILD HEALTH · 0–6 YEARS
+              </div>
+
+              <h3>
+                Growth & Health
+              </h3>
+
+              <p>
+                Track routine health visits,
+                growth measurements and development notes.
+              </p>
+
+            </div>
+
+            <button
+              type="button"
+              class="secondary-action"
+              id="backToChildrenBtn"
+            >
+              ← Back to Children
+            </button>
+
+          </div>
+
+
+          <div class="child-health-summary">
+
+            <div class="child-summary-card">
+
+              <span>
+                Health Visits
+              </span>
+
+              <strong>
+                ${visits.length}
+              </strong>
+
+            </div>
+
+            <div class="child-summary-card">
+
+              <span>
+                Latest Weight
+              </span>
+
+              <strong>
+                ${
+                  visits[0]?.weight ||
+                  'Not recorded'
+                }
+              </strong>
+
+            </div>
+
+            <div class="child-summary-card">
+
+              <span>
+                Latest Height
+              </span>
+
+              <strong>
+                ${
+                  visits[0]?.height ||
+                  'Not recorded'
+                }
+              </strong>
+
+            </div>
+
+            <div class="child-summary-card">
+
+              <span>
+                Referral
+              </span>
+
+              <strong>
+                ${
+                  visits.some(
+                    visit =>
+                      visit.referral_required
+                  )
+                    ? 'Required'
+                    : 'None recorded'
+                }
+              </strong>
+
+            </div>
+
+          </div>
+
+
+          <div class="child-health-list">
+
+            ${
+              visits.length
+                ? visits
+                    .map(
+                      visit => `
+
+                        <div
+                          class="child-health-card"
+                        >
+
+                          <div
+                            class="child-health-icon"
+                          >
+                            📈
+                          </div>
+
+                          <div
+                            class="child-health-main"
+                          >
+
+                            <div
+                              class="child-health-top"
+                            >
+
+                              <div>
+
+                                <strong>
+                                  ${escapeHtml(
+                                    visit.visit_type ||
+                                    'Routine Visit'
+                                  )}
+                                </strong>
+
+                                <span>
+                                  ${escapeHtml(
+                                    visit.visit_date ||
+                                    'Date not recorded'
+                                  )}
+                                </span>
+
+                              </div>
+
+                              ${
+                                visit.referral_required
+                                  ? `
+                                    <span
+                                      class="
+                                        maternal-status-pill
+                                        missed
+                                      "
+                                    >
+                                      Referral
+                                    </span>
+                                  `
+                                  : `
+                                    <span
+                                      class="
+                                        maternal-status-pill
+                                        done
+                                      "
+                                    >
+                                      Recorded
+                                    </span>
+                                  `
+                              }
+
+                            </div>
+
+
+                            <div
+                              class="child-health-measures"
+                            >
+
+                              ${
+                                visit.weight
+                                  ? `
+                                    <span>
+                                      ⚖ Weight:
+                                      ${escapeHtml(
+                                        visit.weight
+                                      )}
+                                    </span>
+                                  `
+                                  : ''
+                              }
+
+                              ${
+                                visit.height
+                                  ? `
+                                    <span>
+                                      📏 Height:
+                                      ${escapeHtml(
+                                        visit.height
+                                      )}
+                                    </span>
+                                  `
+                                  : ''
+                              }
+
+                            </div>
+
+
+                            ${
+                              visit.developmental_notes
+                                ? `
+                                  <div
+                                    class="
+                                      child-health-info-block
+                                    "
+                                  >
+
+                                    <strong>
+                                      Development
+                                    </strong>
+
+                                    <span>
+                                      ${escapeHtml(
+                                        visit.developmental_notes
+                                      )}
+                                    </span>
+
+                                  </div>
+                                `
+                                : ''
+                            }
+
+
+                            ${
+                              visit.findings
+                                ? `
+                                  <div
+                                    class="
+                                      child-health-info-block
+                                    "
+                                  >
+
+                                    <strong>
+                                      Findings
+                                    </strong>
+
+                                    <span>
+                                      ${escapeHtml(
+                                        visit.findings
+                                      )}
+                                    </span>
+
+                                  </div>
+                                `
+                                : ''
+                            }
+
+
+                            ${
+                              visit.notes
+                                ? `
+                                  <p
+                                    class="child-health-notes"
+                                  >
+                                    ${escapeHtml(
+                                      visit.notes
+                                    )}
+                                  </p>
+                                `
+                                : ''
+                            }
+
+                          </div>
+
+                        </div>
+
+                      `
+                    )
+                    .join('')
+                : `
+                  <div class="maternal-care-empty">
+
+                    <div
+                      class="maternal-care-empty-icon"
+                    >
+                      📈
+                    </div>
+
+                    <h3>
+                      No health visits recorded
+                    </h3>
+
+                    <p>
+                      Record the child's first
+                      growth and health visit.
+                    </p>
+
+                  </div>
+                `
+            }
+
+          </div>
+
+
+          <div
+            id="childHealthFormContainer"
+            class="maternal-form-container"
+            hidden
+          ></div>
+
+        `
+
+
+        const backButton =
+          document.querySelector(
+            '#backToChildrenBtn'
+          )
+
+        backButton?.addEventListener(
+          'click',
+          async () => {
+
+            await loadMaternalCareTab(
+              patientId,
+              'children'
+            )
+
+          }
+        )
+
+
+        const addButton =
+          document.createElement('button')
+
+        addButton.type =
+          'button'
+
+        addButton.className =
+          'primary-action'
+
+        addButton.textContent =
+          '+ Record Health Visit'
+
+        const moduleHeader =
+          target.querySelector(
+            '.maternal-module-header'
+          )
+
+        if (moduleHeader) {
+          moduleHeader.appendChild(
+            addButton
+          )
+        }
+
+
+        const formContainer =
+          document.querySelector(
+            '#childHealthFormContainer'
+          )
+
+
+        addButton.addEventListener(
+          'click',
+          () => {
+
+            if (!formContainer) {
+              return
+            }
+
+            formContainer.hidden = false
+
+            formContainer.innerHTML = `
+
+              <form
+                id="childHealthForm"
+                class="maternal-record-form"
+              >
+
+                <div class="maternal-form-title">
+                  Record Child Health Visit
+                </div>
+
+
+                <div class="maternal-form-grid">
+
+                  <label>
+                    Visit Date
+
+                    <input
+                      type="date"
+                      name="visit_date"
+                      required
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Visit Type
+
+                    <select name="visit_type">
+
+                      <option value="Routine">
+                        Routine
+                      </option>
+
+                      <option value="Growth Monitoring">
+                        Growth Monitoring
+                      </option>
+
+                      <option value="Development Review">
+                        Development Review
+                      </option>
+
+                      <option value="Illness Follow-up">
+                        Illness Follow-up
+                      </option>
+
+                    </select>
+
+                  </label>
+
+
+                  <label>
+                    Weight
+
+                    <input
+                      type="text"
+                      name="weight"
+                      placeholder="e.g. 8.5 kg"
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Height
+
+                    <input
+                      type="text"
+                      name="height"
+                      placeholder="e.g. 72 cm"
+                    >
+
+                  </label>
+
+                </div>
+
+
+                <label>
+                  Developmental Notes
+
+                  <textarea
+                    name="developmental_notes"
+                    rows="3"
+                    placeholder="Development observations"
+                  ></textarea>
+
+                </label>
+
+
+                <label>
+                  Findings
+
+                  <textarea
+                    name="findings"
+                    rows="3"
+                    placeholder="Health findings"
+                  ></textarea>
+
+                </label>
+
+
+                <label>
+                  Notes
+
+                  <textarea
+                    name="notes"
+                    rows="2"
+                    placeholder="Additional notes"
+                  ></textarea>
+
+                </label>
+
+
+                <div
+                  class="maternal-form-checks"
+                >
+
+                  <label>
+
+                    <input
+                      type="checkbox"
+                      name="referral_required"
+                    >
+
+                    Referral required
+
+                  </label>
+
+                </div>
+
+
+                <div
+                  class="maternal-form-actions"
+                >
+
+                  <button
+                    type="submit"
+                    class="primary-action"
+                  >
+                    Save Health Visit
+                  </button>
+
+                  <button
+                    type="button"
+                    class="secondary-action"
+                    id="cancelChildHealthBtn"
+                  >
+                    Cancel
+                  </button>
+
+                </div>
+
+              </form>
+
+            `
+
+
+            document
+              .querySelector(
+                '#cancelChildHealthBtn'
+              )
+              ?.addEventListener(
+                'click',
+                () => {
+
+                  formContainer.hidden =
+                    true
+
+                  formContainer.innerHTML =
+                    ''
+
+                }
+              )
+
+
+            document
+              .querySelector(
+                '#childHealthForm'
+              )
+              ?.addEventListener(
+                'submit',
+                async event => {
+
+                  event.preventDefault()
+
+                  const form =
+                    event.currentTarget
+
+                  const formData =
+                    new FormData(form)
+
+                  const payload = {
+
+                    visit_date:
+                      formData.get(
+                        'visit_date'
+                      ),
+
+                    visit_type:
+                      formData.get(
+                        'visit_type'
+                      ) ||
+                      'Routine',
+
+                    weight:
+                      formData.get(
+                        'weight'
+                      ) || null,
+
+                    height:
+                      formData.get(
+                        'height'
+                      ) || null,
+
+                    developmental_notes:
+                      formData.get(
+                        'developmental_notes'
+                      ) || null,
+
+                    findings:
+                      formData.get(
+                        'findings'
+                      ) || null,
+
+                    referral_required:
+                      formData.get(
+                        'referral_required'
+                      ) === 'on',
+
+                    notes:
+                      formData.get(
+                        'notes'
+                      ) || null
+
+                  }
+
+
+                  const saveButton =
+                    form.querySelector(
+                      'button[type="submit"]'
+                    )
+
+                  if (saveButton) {
+
+                    saveButton.disabled =
+                      true
+
+                    saveButton.textContent =
+                      'Saving...'
+
+                  }
+
+
+                  try {
+
+                    const saved =
+                      await apiRequest(
+                        `/maternal/children/${encodeURIComponent(
+                          childId
+                        )}/health-visits?actor_id=${encodeURIComponent(
+                          getCurrentActorId()
+                        )}`,
+                        {
+                          method: 'POST',
+
+                          body:
+                            JSON.stringify(
+                              payload
+                            )
+                        }
+                      )
+
+
+                    if (
+                      !saved ||
+                      !saved.success
+                    ) {
+
+                      throw new Error(
+                        saved?.message ||
+                        'Unable to save health visit.'
+                      )
+
+                    }
+
+
+                    await loadMaternalCareTab(
+                      patientId,
+                      'child-health'
+                    )
+
+                  } catch (error) {
+
+                    console.error(
+                      'Save child health visit:',
+                      error
+                    )
+
+                    alert(
+                      error?.message ||
+                      'Unable to save health visit.'
+                    )
+
+                    if (saveButton) {
+
+                      saveButton.disabled =
+                        false
+
+                      saveButton.textContent =
+                        'Save Health Visit'
+
+                    }
+
+                  }
+
+                }
+              )
+
+          }
+        )
+
+        return
+      }
+
+
+            // =================================================
+      // FAMILY PLANNING
+      // =================================================
+
+      if (tab === 'family') {
+
+        const result =
+          await apiRequest(
+            `/maternal/patients/${encodeURIComponent(
+              patientId
+            )}/family-planning?actor_id=${encodeURIComponent(
+              getCurrentActorId()
+            )}`
+          )
+
+        const records =
+          result?.records ||
+          []
+
+        target.innerHTML = `
+
+          <div class="maternal-module-header">
+
+            <div>
+
+              <div class="dashboard-kicker">
+                FAMILY PLANNING
+              </div>
+
+              <h3>
+                Family Planning & Counselling
+              </h3>
+
+              <p>
+                Record counselling, follow-up and
+                patient-selected family planning information.
+              </p>
+
+            </div>
+
+            <button
+              type="button"
+              class="primary-action"
+              id="addFamilyPlanningBtn"
+            >
+              + Record Counselling
+            </button>
+
+          </div>
+
+
+          <div class="family-planning-summary">
+
+            <div class="family-planning-stat">
+              <span>Records</span>
+              <strong>${records.length}</strong>
+            </div>
+
+            <div class="family-planning-stat">
+              <span>Follow-up Due</span>
+              <strong>
+                ${
+                  records.filter(
+                    item =>
+                      item.status ===
+                      'Follow-up Due'
+                  ).length
+                }
+              </strong>
+            </div>
+
+            <div class="family-planning-stat">
+              <span>Completed</span>
+              <strong>
+                ${
+                  records.filter(
+                    item =>
+                      item.status ===
+                      'Completed'
+                  ).length
+                }
+              </strong>
+            </div>
+
+            <div class="family-planning-stat">
+              <span>Last Counselling</span>
+              <strong>
+                ${
+                  records[0]?.counselling_date ||
+                  'Not recorded'
+                }
+              </strong>
+            </div>
+
+          </div>
+
+
+          <div class="family-planning-list">
+
+            ${
+              records.length
+                ? records
+                    .map(
+                      record => `
+
+                        <div
+                          class="family-planning-card"
+                        >
+
+                          <div
+                            class="family-planning-icon"
+                          >
+                            🤝
+                          </div>
+
+                          <div
+                            class="family-planning-main"
+                          >
+
+                            <div
+                              class="family-planning-top"
+                            >
+
+                              <div>
+
+                                <strong>
+                                  ${escapeHtml(
+                                    record.method_selected ||
+                                    'Counselling recorded'
+                                  )}
+                                </strong>
+
+                                <span>
+                                  ${escapeHtml(
+                                    record.counselling_date ||
+                                    'Date not recorded'
+                                  )}
+                                </span>
+
+                              </div>
+
+                              <span
+                                class="
+                                  maternal-status-pill
+                                  ${
+                                    record.status ===
+                                    'Completed'
+                                      ? 'done'
+                                      : record.status ===
+                                        'Follow-up Due'
+                                        ? 'missed'
+                                        : 'due'
+                                  }
+                                "
+                              >
+                                ${escapeHtml(
+                                  record.status ||
+                                  'Counselling'
+                                )}
+                              </span>
+
+                            </div>
+
+
+                            ${
+                              record.methods_discussed
+                                ? `
+                                  <div
+                                    class="
+                                      family-planning-info
+                                    "
+                                  >
+
+                                    <strong>
+                                      Methods discussed
+                                    </strong>
+
+                                    <span>
+                                      ${escapeHtml(
+                                        record.methods_discussed
+                                      )}
+                                    </span>
+
+                                  </div>
+                                `
+                                : ''
+                            }
+
+
+                            ${
+                              record.follow_up_date
+                                ? `
+                                  <div
+                                    class="
+                                      family-planning-info
+                                    "
+                                  >
+
+                                    <strong>
+                                      Follow-up
+                                    </strong>
+
+                                    <span>
+                                      ${escapeHtml(
+                                        record.follow_up_date
+                                      )}
+                                    </span>
+
+                                  </div>
+                                `
+                                : ''
+                            }
+
+
+                            ${
+                              record.notes
+                                ? `
+                                  <p
+                                    class="
+                                      family-planning-notes
+                                    "
+                                  >
+                                    ${escapeHtml(
+                                      record.notes
+                                    )}
+                                  </p>
+                                `
+                                : ''
+                            }
+
+                          </div>
+
+                        </div>
+
+                      `
+                    )
+                    .join('')
+                : `
+                  <div class="maternal-care-empty">
+
+                    <div
+                      class="maternal-care-empty-icon"
+                    >
+                      🤝
+                    </div>
+
+                    <h3>
+                      No family planning records
+                    </h3>
+
+                    <p>
+                      Record counselling or follow-up
+                      information here.
+                    </p>
+
+                  </div>
+                `
+            }
+
+          </div>
+
+
+          <div
+            id="familyPlanningFormContainer"
+            class="maternal-form-container"
+            hidden
+          ></div>
+
+        `
+
+
+        const addButton =
+          document.querySelector(
+            '#addFamilyPlanningBtn'
+          )
+
+        const formContainer =
+          document.querySelector(
+            '#familyPlanningFormContainer'
+          )
+
+
+        addButton?.addEventListener(
+          'click',
+          () => {
+
+            if (!formContainer) {
+              return
+            }
+
+            formContainer.hidden = false
+
+            const pregnancyOptions =
+              pregnancies
+                .map(
+                  item => `
+                    <option value="${escapeHtml(
+                      String(item.id)
+                    )}">
+                      Pregnancy #${escapeHtml(
+                        String(
+                          item.pregnancy_number
+                        )
+                      )}
+                    </option>
+                  `
+                )
+                .join('')
+
+
+            formContainer.innerHTML = `
+
+              <form
+                id="familyPlanningForm"
+                class="maternal-record-form"
+              >
+
+                <div class="maternal-form-title">
+                  Record Family Planning Counselling
+                </div>
+
+
+                <div
+                  class="maternal-form-grid"
+                >
+
+                  <label>
+                    Pregnancy
+
+                    <select
+                      name="pregnancy_id"
+                    >
+
+                      <option value="">
+                        General family planning
+                      </option>
+
+                      ${pregnancyOptions}
+
+                    </select>
+
+                  </label>
+
+
+                  <label>
+                    Counselling Date
+
+                    <input
+                      type="date"
+                      name="counselling_date"
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Follow-up Date
+
+                    <input
+                      type="date"
+                      name="follow_up_date"
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Status
+
+                    <select
+                      name="status"
+                    >
+
+                      <option value="Counselling">
+                        Counselling
+                      </option>
+
+                      <option value="Method Selected">
+                        Method Selected
+                      </option>
+
+                      <option value="Follow-up Due">
+                        Follow-up Due
+                      </option>
+
+                      <option value="Completed">
+                        Completed
+                      </option>
+
+                      <option value="Declined">
+                        Declined
+                      </option>
+
+                      <option value="Deferred">
+                        Deferred
+                      </option>
+
+                    </select>
+
+                  </label>
+
+                </div>
+
+
+                <label>
+                  Methods Discussed
+
+                  <textarea
+                    name="methods_discussed"
+                    rows="3"
+                    placeholder="Record what was discussed"
+                  ></textarea>
+
+                </label>
+
+
+                <label>
+                  Method Selected
+
+                  <input
+                    type="text"
+                    name="method_selected"
+                    placeholder="Record the patient's selected option, if applicable"
+                  >
+
+                </label>
+
+
+                <label>
+                  Notes
+
+                  <textarea
+                    name="notes"
+                    rows="3"
+                    placeholder="Additional counselling notes"
+                  ></textarea>
+
+                </label>
+
+
+                <div
+                  class="maternal-form-actions"
+                >
+
+                  <button
+                    type="submit"
+                    class="primary-action"
+                  >
+                    Save Record
+                  </button>
+
+                  <button
+                    type="button"
+                    class="secondary-action"
+                    id="cancelFamilyPlanningBtn"
+                  >
+                    Cancel
+                  </button>
+
+                </div>
+
+              </form>
+
+            `
+
+
+            document
+              .querySelector(
+                '#cancelFamilyPlanningBtn'
+              )
+              ?.addEventListener(
+                'click',
+                () => {
+
+                  formContainer.hidden =
+                    true
+
+                  formContainer.innerHTML =
+                    ''
+
+                }
+              )
+
+
+            document
+              .querySelector(
+                '#familyPlanningForm'
+              )
+              ?.addEventListener(
+                'submit',
+                async event => {
+
+                  event.preventDefault()
+
+                  const form =
+                    event.currentTarget
+
+                  const formData =
+                    new FormData(form)
+
+                  const pregnancyValue =
+                    formData.get(
+                      'pregnancy_id'
+                    )
+
+                  const payload = {
+
+                    pregnancy_id:
+                      pregnancyValue
+                        ? Number(
+                            pregnancyValue
+                          )
+                        : null,
+
+                    counselling_date:
+                      formData.get(
+                        'counselling_date'
+                      ) || null,
+
+                    methods_discussed:
+                      formData.get(
+                        'methods_discussed'
+                      ) || null,
+
+                    method_selected:
+                      formData.get(
+                        'method_selected'
+                      ) || null,
+
+                    follow_up_date:
+                      formData.get(
+                        'follow_up_date'
+                      ) || null,
+
+                    status:
+                      formData.get(
+                        'status'
+                      ) ||
+                      'Counselling',
+
+                    notes:
+                      formData.get(
+                        'notes'
+                      ) || null
+
+                  }
+
+
+                  const saveButton =
+                    form.querySelector(
+                      'button[type="submit"]'
+                    )
+
+                  if (saveButton) {
+
+                    saveButton.disabled =
+                      true
+
+                    saveButton.textContent =
+                      'Saving...'
+
+                  }
+
+
+                  try {
+
+                    const saved =
+                      await apiRequest(
+                        `/maternal/patients/${encodeURIComponent(
+                          patientId
+                        )}/family-planning?actor_id=${encodeURIComponent(
+                          getCurrentActorId()
+                        )}`,
+                        {
+                          method: 'POST',
+
+                          body:
+                            JSON.stringify(
+                              payload
+                            )
+                        }
+                      )
+
+
+                    if (
+                      !saved ||
+                      !saved.success
+                    ) {
+
+                      throw new Error(
+                        saved?.message ||
+                        'Unable to save family planning record.'
+                      )
+
+                    }
+
+
+                    await loadMaternalCareTab(
+                      patientId,
+                      'family'
+                    )
+
+                  } catch (error) {
+
+                    console.error(
+                      'Save family planning:',
+                      error
+                    )
+
+                    alert(
+                      error?.message ||
+                      'Unable to save family planning record.'
+                    )
+
+                    if (saveButton) {
+
+                      saveButton.disabled =
+                        false
+
+                      saveButton.textContent =
+                        'Save Record'
+
+                    }
+
+                  }
+
+                }
+              )
+
+          }
+        )
+
+        return
+      }
+
+      // =================================================
+      // GOVERNMENT SCHEMES
+      // =================================================
+
+      if (tab === 'schemes') {
+
+        const result =
+          await apiRequest(
+            `/maternal/patients/${encodeURIComponent(
+              patientId
+            )}/schemes?actor_id=${encodeURIComponent(
+              getCurrentActorId()
+            )}`
+          )
+
+        const schemes =
+          result?.schemes ||
+          []
+
+        const summary =
+          result?.summary ||
+          {
+            total: 0,
+            eligible: 0,
+            applied: 0,
+            approved: 0,
+            benefit_received: 0,
+            needs_action: 0
+          }
+
+        target.innerHTML = `
+
+          <div class="maternal-module-header">
+
+            <div>
+
+              <div class="dashboard-kicker">
+                GOVERNMENT BENEFITS
+              </div>
+
+              <h3>
+                Government Schemes
+              </h3>
+
+              <p>
+                Track eligibility, application progress,
+                approvals and benefits for the mother.
+              </p>
+
+            </div>
+
+            <button
+              type="button"
+              class="primary-action"
+              id="addSchemeBtn"
+            >
+              + Add Scheme
+            </button>
+
+          </div>
+
+
+          <div class="scheme-summary-grid">
+
+            <div class="scheme-summary-card">
+              <span>Total Records</span>
+              <strong>
+                ${summary.total}
+              </strong>
+            </div>
+
+            <div class="scheme-summary-card">
+              <span>Eligible</span>
+              <strong>
+                ${summary.eligible}
+              </strong>
+            </div>
+
+            <div class="scheme-summary-card">
+              <span>Approved</span>
+              <strong>
+                ${summary.approved}
+              </strong>
+            </div>
+
+            <div class="scheme-summary-card">
+              <span>Benefits Received</span>
+              <strong>
+                ${summary.benefit_received}
+              </strong>
+            </div>
+
+            <div class="scheme-summary-card">
+              <span>Needs Action</span>
+              <strong>
+                ${summary.needs_action}
+              </strong>
+            </div>
+
+          </div>
+
+
+          <div class="scheme-list">
+
+            ${
+              schemes.length
+                ? schemes
+                    .map(
+                      scheme => {
+
+                        const eligibility =
+                          String(
+                            scheme.eligibility_status ||
+                            'To Verify'
+                          )
+
+                        const application =
+                          String(
+                            scheme.application_status ||
+                            'Not Applied'
+                          )
+
+                        let statusClass =
+                          'due'
+
+                        if (
+                          application ===
+                          'Benefit Received'
+                        ) {
+                          statusClass = 'done'
+                        } else if (
+                          application ===
+                          'Rejected'
+                        ) {
+                          statusClass = 'missed'
+                        }
+
+                        return `
+
+                          <div
+                            class="scheme-card"
+                          >
+
+                            <div class="scheme-icon">
+                              🏛️
+                            </div>
+
+
+                            <div class="scheme-main">
+
+                              <div
+                                class="scheme-top"
+                              >
+
+                                <div>
+
+                                  <strong>
+                                    ${escapeHtml(
+                                      scheme.scheme_name ||
+                                      'Government Scheme'
+                                    )}
+                                  </strong>
+
+                                  <span>
+                                    Eligibility:
+                                    ${escapeHtml(
+                                      eligibility
+                                    )}
+                                  </span>
+
+                                </div>
+
+                                <span
+                                  class="
+                                    maternal-status-pill
+                                    ${statusClass}
+                                  "
+                                >
+                                  ${escapeHtml(
+                                    application
+                                  )}
+                                </span>
+
+                              </div>
+
+
+                              <div
+                                class="scheme-details"
+                              >
+
+                                ${
+                                  scheme.application_date
+                                    ? `
+                                      <span>
+                                        📝 Applied:
+                                        ${escapeHtml(
+                                          scheme.application_date
+                                        )}
+                                      </span>
+                                    `
+                                    : ''
+                                }
+
+                                ${
+                                  scheme.approval_date
+                                    ? `
+                                      <span>
+                                        ✓ Approved:
+                                        ${escapeHtml(
+                                          scheme.approval_date
+                                        )}
+                                      </span>
+                                    `
+                                    : ''
+                                }
+
+                                ${
+                                  scheme.benefit_received_date
+                                    ? `
+                                      <span>
+                                        💰 Benefit:
+                                        ${escapeHtml(
+                                          scheme.benefit_received_date
+                                        )}
+                                      </span>
+                                    `
+                                    : ''
+                                }
+
+                              </div>
+
+
+                              ${
+                                scheme.notes
+                                  ? `
+                                    <div
+                                      class="scheme-notes"
+                                    >
+                                      ${escapeHtml(
+                                        scheme.notes
+                                      )}
+                                    </div>
+                                  `
+                                  : ''
+                              }
+
+                            </div>
+
+                          </div>
+
+                        `
+                      }
+                    )
+                    .join('')
+                : `
+                  <div class="maternal-care-empty">
+
+                    <div class="maternal-care-empty-icon">
+                      🏛️
+                    </div>
+
+                    <h3>
+                      No scheme records
+                    </h3>
+
+                    <p>
+                      Add a government scheme record
+                      for this patient.
+                    </p>
+
+                  </div>
+                `
+            }
+
+          </div>
+
+
+          <div
+            id="schemeFormContainer"
+            class="maternal-form-container"
+            hidden
+          ></div>
+
+        `
+
+
+        const addButton =
+          document.querySelector(
+            '#addSchemeBtn'
+          )
+
+        const formContainer =
+          document.querySelector(
+            '#schemeFormContainer'
+          )
+
+
+        addButton?.addEventListener(
+          'click',
+          () => {
+
+            if (!formContainer) {
+              return
+            }
+
+            formContainer.hidden = false
+
+            const pregnancyOptions =
+              pregnancies
+                .map(
+                  item => `
+                    <option
+                      value="${escapeHtml(
+                        String(item.id)
+                      )}"
+                    >
+                      Pregnancy #${escapeHtml(
+                        String(
+                          item.pregnancy_number
+                        )
+                      )}
+                    </option>
+                  `
+                )
+                .join('')
+
+
+            formContainer.innerHTML = `
+
+              <form
+                id="schemeForm"
+                class="maternal-record-form"
+              >
+
+                <div class="maternal-form-title">
+                  Add Government Scheme
+                </div>
+
+
+                <div
+                  class="maternal-form-grid"
+                >
+
+                  <label>
+                    Scheme Name
+
+                    <input
+                      type="text"
+                      name="scheme_name"
+                      placeholder="e.g. PMMVY"
+                      required
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Pregnancy
+
+                    <select
+                      name="pregnancy_id"
+                    >
+
+                      <option value="">
+                        General record
+                      </option>
+
+                      ${pregnancyOptions}
+
+                    </select>
+
+                  </label>
+
+
+                  <label>
+                    Eligibility
+
+                    <select
+                      name="eligibility_status"
+                    >
+
+                      <option value="To Verify">
+                        To Verify
+                      </option>
+
+                      <option value="Eligible">
+                        Eligible
+                      </option>
+
+                      <option value="Under Review">
+                        Under Review
+                      </option>
+
+                      <option value="Not Eligible">
+                        Not Eligible
+                      </option>
+
+                    </select>
+
+                  </label>
+
+
+                  <label>
+                    Application Status
+
+                    <select
+                      name="application_status"
+                    >
+
+                      <option value="Not Applied">
+                        Not Applied
+                      </option>
+
+                      <option value="Application Started">
+                        Application Started
+                      </option>
+
+                      <option value="Applied">
+                        Applied
+                      </option>
+
+                      <option value="Approved">
+                        Approved
+                      </option>
+
+                      <option value="Rejected">
+                        Rejected
+                      </option>
+
+                      <option value="Benefit Received">
+                        Benefit Received
+                      </option>
+
+                      <option value="Closed">
+                        Closed
+                      </option>
+
+                    </select>
+
+                  </label>
+
+
+                  <label>
+                    Application Date
+
+                    <input
+                      type="date"
+                      name="application_date"
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Approval Date
+
+                    <input
+                      type="date"
+                      name="approval_date"
+                    >
+
+                  </label>
+
+
+                  <label>
+                    Benefit Received Date
+
+                    <input
+                      type="date"
+                      name="benefit_received_date"
+                    >
+
+                  </label>
+
+                </div>
+
+
+                <label>
+                  Notes
+
+                  <textarea
+                    name="notes"
+                    rows="3"
+                    placeholder="Additional scheme notes"
+                  ></textarea>
+
+                </label>
+
+
+                <div
+                  class="maternal-form-actions"
+                >
+
+                  <button
+                    type="submit"
+                    class="primary-action"
+                  >
+                    Save Scheme
+                  </button>
+
+                  <button
+                    type="button"
+                    class="secondary-action"
+                    id="cancelSchemeBtn"
+                  >
+                    Cancel
+                  </button>
+
+                </div>
+
+              </form>
+
+            `
+
+
+            document
+              .querySelector(
+                '#cancelSchemeBtn'
+              )
+              ?.addEventListener(
+                'click',
+                () => {
+
+                  formContainer.hidden =
+                    true
+
+                  formContainer.innerHTML =
+                    ''
+
+                }
+              )
+
+
+            document
+              .querySelector(
+                '#schemeForm'
+              )
+              ?.addEventListener(
+                'submit',
+                async event => {
+
+                  event.preventDefault()
+
+                  const form =
+                    event.currentTarget
+
+                  const formData =
+                    new FormData(form)
+
+                  const pregnancyValue =
+                    formData.get(
+                      'pregnancy_id'
+                    )
+
+                  const payload = {
+
+                    pregnancy_id:
+                      pregnancyValue
+                        ? Number(
+                            pregnancyValue
+                          )
+                        : null,
+
+                    scheme_name:
+                      formData.get(
+                        'scheme_name'
+                      ),
+
+                    eligibility_status:
+                      formData.get(
+                        'eligibility_status'
+                      ) ||
+                      'To Verify',
+
+                    application_status:
+                      formData.get(
+                        'application_status'
+                      ) ||
+                      'Not Applied',
+
+                    application_date:
+                      formData.get(
+                        'application_date'
+                      ) || null,
+
+                    approval_date:
+                      formData.get(
+                        'approval_date'
+                      ) || null,
+
+                    benefit_received_date:
+                      formData.get(
+                        'benefit_received_date'
+                      ) || null,
+
+                    notes:
+                      formData.get(
+                        'notes'
+                      ) || null
+
+                  }
+
+
+                  const saveButton =
+                    form.querySelector(
+                      'button[type="submit"]'
+                    )
+
+                  if (saveButton) {
+
+                    saveButton.disabled =
+                      true
+
+                    saveButton.textContent =
+                      'Saving...'
+
+                  }
+
+
+                  try {
+
+                    const saved =
+                      await apiRequest(
+                        `/maternal/patients/${encodeURIComponent(
+                          patientId
+                        )}/schemes?actor_id=${encodeURIComponent(
+                          getCurrentActorId()
+                        )}`,
+                        {
+                          method: 'POST',
+
+                          body:
+                            JSON.stringify(
+                              payload
+                            )
+                        }
+                      )
+
+
+                    if (
+                      !saved ||
+                      !saved.success
+                    ) {
+
+                      throw new Error(
+                        saved?.message ||
+                        'Unable to save scheme.'
+                      )
+
+                    }
+
+
+                    await loadMaternalCareTab(
+                      patientId,
+                      'schemes'
+                    )
+
+                  } catch (error) {
+
+                    console.error(
+                      'Save government scheme:',
+                      error
+                    )
+
+                    alert(
+                      error?.message ||
+                      'Unable to save scheme.'
+                    )
+
+                    if (saveButton) {
+
+                      saveButton.disabled =
+                        false
+
+                      saveButton.textContent =
+                        'Save Scheme'
+
+                    }
+
+                  }
+
+                }
+              )
+
+          }
+        )
+
+        return
+      }
 
       // =================================================
       // OTHER TABS — TEMPORARY HANDOFF
@@ -10521,6 +17106,20 @@ async function startNfcScan() {
         )
 
         await openPatient(patientId)
+
+if (
+  String(currentPatient?.gender || '')
+    .trim()
+    .toLowerCase() === 'female'
+) {
+  setTimeout(() => {
+    if (
+      typeof openMaternalChildCareCenter === 'function'
+    ) {
+      openMaternalChildCareCenter()
+    }
+  }, 300)
+}
       },
       {
         once: true
