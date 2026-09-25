@@ -505,7 +505,7 @@ select:focus-visible {
   display: grid;
 
   grid-template-columns:
-    repeat(3, minmax(0, 1fr));
+    repeat(4, minmax(0, 1fr));
 
   gap: 12px;
 
@@ -8299,4 +8299,1195 @@ textarea.form-control {
     margin-right: 10px;
   }
 
+}
+
+/* =========================================================
+   DWIT — ADMIN COMMAND CENTER
+========================================================= */
+
+.dwit-admin-shell {
+  min-height: 100vh;
+  display: flex;
+  background:
+    radial-gradient(
+      circle at 90% 0%,
+      rgba(17, 127, 119, 0.08),
+      transparent 24%
+    ),
+    #f4f7f8;
+  color: #102a43;
+  font-family: "DM Sans", Arial, sans-serif;
+}
+
+.dwit-admin-sidebar {
+  width: 270px;
+  min-height: 100vh;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 26px 18px;
+  background:
+    linear-gradient(
+      180deg,
+      #071d30 0%,
+      #0a2936 100%
+    );
+  color: white;
+  position: sticky;
+  top: 0;
+}
+
+.dwit-admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+.dwit-admin-logo {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(241, 181, 29, 0.24),
+      rgba(17, 127, 119, 0.2)
+    );
+  border: 1px solid rgba(255,255,255,.16);
+  font-family: "Manrope", sans-serif;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+
+.dwit-admin-brand strong {
+  display: block;
+  font-family: "Manrope", sans-serif;
+  font-size: 17px;
+}
+
+.dwit-admin-brand span {
+  display: block;
+  margin-top: 3px;
+  color: #9bb4c6;
+  font-size: 9px;
+  letter-spacing: .16em;
+  font-weight: 800;
+}
+
+.dwit-admin-sidebar-label {
+  margin: 0 10px 10px;
+  color: #7e9caf;
+  font-size: 9px;
+  letter-spacing: .18em;
+  font-weight: 800;
+}
+
+.dwit-admin-nav {
+  display: grid;
+  gap: 6px;
+}
+
+.dwit-admin-nav button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 13px;
+  border-radius: 11px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #b8c9d6;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: .18s ease;
+}
+
+.dwit-admin-nav button span {
+  width: 20px;
+  color: #7ea8a6;
+  text-align: center;
+}
+
+.dwit-admin-nav button:hover,
+.dwit-admin-nav button.active {
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.08);
+  color: white;
+}
+
+.dwit-admin-nav button.active span {
+  color: #f1b51d;
+}
+
+.dwit-admin-sidebar-footer {
+  margin-top: auto;
+  padding: 17px 3px 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+.dwit-admin-user-avatar {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,.1);
+  color: #f1b51d;
+  font-weight: 800;
+}
+
+.dwit-admin-user-copy strong,
+.dwit-admin-user-copy span {
+  display: block;
+}
+
+.dwit-admin-user-copy strong {
+  font-size: 11px;
+}
+
+.dwit-admin-user-copy span {
+  margin-top: 3px;
+  color: #91a8b8;
+  font-size: 9px;
+}
+
+.dwit-admin-logout {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.04);
+  color: #d4e0e7;
+  cursor: pointer;
+}
+
+.dwit-admin-main {
+  flex: 1;
+  min-width: 0;
+  padding: 28px clamp(18px, 4vw, 48px) 55px;
+}
+
+.dwit-admin-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 26px;
+}
+
+.dwit-admin-eyebrow {
+  color: #117f77;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .2em;
+}
+
+.dwit-admin-topbar h1 {
+  margin: 7px 0 5px;
+  color: #0a273d;
+  font-family: "Manrope", sans-serif;
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1.05;
+  letter-spacing: -.04em;
+}
+
+.dwit-admin-topbar p {
+  margin: 0;
+  color: #718395;
+  font-size: 13px;
+}
+
+.dwit-admin-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dwit-admin-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: #e7f5f0;
+  color: #147466;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.dwit-admin-sync span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #1c9a7d;
+  box-shadow: 0 0 0 4px rgba(28,154,125,.10);
+}
+
+.dwit-admin-refresh {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid #dfe7ed;
+  border-radius: 9px;
+  background: white;
+  color: #24425a;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dwit-admin-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 13px;
+  margin-bottom: 17px;
+}
+
+.dwit-admin-stat-grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dwit-admin-stat-card {
+  min-height: 125px;
+  padding: 17px;
+  background: rgba(255,255,255,.92);
+  border: 1px solid #dfe7ed;
+  border-radius: 16px;
+  box-shadow: 0 8px 22px rgba(13,41,59,.05);
+}
+
+.dwit-admin-stat-attention {
+  border-color: rgba(202,80,80,.24);
+  background:
+    linear-gradient(
+      145deg,
+      #fffafa,
+      #fff
+    );
+}
+
+.dwit-admin-stat-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #708497;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.dwit-admin-stat-top b {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #eef5f6;
+  color: #117f77;
+  font-size: 13px;
+}
+
+.dwit-admin-stat-card > strong {
+  display: block;
+  margin-top: 12px;
+  color: #0c2b3f;
+  font-family: "Manrope", sans-serif;
+  font-size: 27px;
+}
+
+.dwit-admin-stat-card > small {
+  display: block;
+  margin-top: 6px;
+  color: #8a9aa6;
+  font-size: 10px;
+}
+
+.dwit-admin-layout-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 17px;
+  margin-bottom: 17px;
+}
+
+.dwit-admin-panel {
+  padding: 20px;
+  background: rgba(255,255,255,.94);
+  border: 1px solid #dfe7ed;
+  border-radius: 17px;
+  box-shadow: 0 8px 22px rgba(13,41,59,.05);
+}
+
+.dwit-admin-panel-large {
+  grid-column: 1 / -1;
+}
+
+.dwit-admin-activity-panel {
+  margin-top: 17px;
+}
+
+.dwit-admin-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.dwit-admin-panel-heading h2 {
+  margin: 0;
+  color: #0c2b3f;
+  font-family: "Manrope", sans-serif;
+  font-size: 17px;
+}
+
+.dwit-admin-panel-heading p {
+  margin: 5px 0 0;
+  color: #7d8d99;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.dwit-admin-chip,
+.dwit-admin-ai-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: #eef3f5;
+  color: #5f7485;
+  font-size: 9px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.dwit-admin-chip-warning {
+  background: #fff3d8;
+  color: #946600;
+}
+
+.dwit-admin-chip-success {
+  background: #e2f4ed;
+  color: #1c735f;
+}
+
+.dwit-admin-ai-tag {
+  background: #f0ecff;
+  color: #6b55af;
+  letter-spacing: .08em;
+}
+
+.dwit-admin-bars {
+  display: grid;
+  gap: 15px;
+}
+
+.dwit-admin-bar-row {
+  display: grid;
+  gap: 7px;
+}
+
+.dwit-admin-bar-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #37546a;
+  font-size: 11px;
+}
+
+.dwit-admin-bar-label strong {
+  color: #112f44;
+}
+
+.dwit-admin-bar-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf2f4;
+}
+
+.dwit-admin-bar-fill {
+  height: 100%;
+  min-width: 4px;
+  border-radius: inherit;
+  background:
+    linear-gradient(
+      90deg,
+      #117f77,
+      #2c9b8f
+    );
+}
+
+.dwit-admin-phc-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.dwit-admin-phc-detail-card {
+  padding: 12px;
+  border: 1px solid #e6ecef;
+  border-radius: 11px;
+  background: #fafcfc;
+}
+
+.dwit-admin-phc-detail-card span,
+.dwit-admin-phc-detail-card strong {
+  display: block;
+}
+
+.dwit-admin-phc-detail-card span {
+  color: #82919c;
+  font-size: 9px;
+}
+
+.dwit-admin-phc-detail-card strong {
+  margin-top: 6px;
+  color: #0c2b3f;
+  font-size: 19px;
+}
+
+.dwit-admin-select,
+.dwit-admin-search {
+  min-height: 38px;
+  min-width: 210px;
+  padding: 0 11px;
+  border: 1px solid #dce5e9;
+  border-radius: 9px;
+  background: white;
+  color: #25465b;
+  font-size: 11px;
+}
+
+.dwit-admin-search {
+  min-width: 260px;
+}
+
+.dwit-admin-donut-wrap {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: center;
+  gap: 20px;
+  min-height: 220px;
+}
+
+.dwit-admin-donut {
+  width: 160px;
+  height: 160px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.dwit-admin-donut-hole {
+  width: 112px;
+  height: 112px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  border-radius: 50%;
+  background: white;
+  box-shadow: inset 0 0 0 1px #edf1f3;
+}
+
+.dwit-admin-donut-hole strong,
+.dwit-admin-donut-hole span {
+  display: block;
+}
+
+.dwit-admin-donut-hole strong {
+  color: #0d2c40;
+  font-family: "Manrope", sans-serif;
+  font-size: 24px;
+}
+
+.dwit-admin-donut-hole span {
+  margin-top: 2px;
+  color: #85929c;
+  font-size: 9px;
+}
+
+.dwit-admin-legend {
+  display: grid;
+  gap: 12px;
+}
+
+.dwit-admin-legend > div {
+  display: grid;
+  grid-template-columns: 9px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.dwit-admin-legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #117f77;
+}
+
+.dwit-admin-legend label {
+  color: #637887;
+}
+
+.dwit-admin-legend strong {
+  color: #16364c;
+}
+
+.dwit-admin-service-table {
+  overflow-x: auto;
+}
+
+.dwit-admin-service-head,
+.dwit-admin-service-row {
+  display: grid;
+  grid-template-columns: 2fr repeat(4, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-width: 640px;
+  padding: 11px 8px;
+  border-bottom: 1px solid #edf1f3;
+  font-size: 11px;
+}
+
+.dwit-admin-service-head {
+  color: #7a8b97;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.dwit-admin-service-row strong {
+  color: #17384d;
+}
+
+.dwit-admin-service-row span {
+  color: #667c8b;
+}
+
+.dwit-admin-network-list,
+.dwit-admin-mini-list {
+  display: grid;
+  gap: 2px;
+}
+
+.dwit-admin-network-row,
+.dwit-admin-mini-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid #edf1f3;
+}
+
+.dwit-admin-network-row strong,
+.dwit-admin-mini-row strong {
+  display: block;
+  color: #23445a;
+  font-size: 11px;
+}
+
+.dwit-admin-network-row span:not(.dwit-admin-online-dot),
+.dwit-admin-mini-row span {
+  display: block;
+  margin-top: 3px;
+  color: #8a99a4;
+  font-size: 9px;
+}
+
+.dwit-admin-online-dot {
+  color: #1b977b;
+  font-size: 14px;
+}
+
+.dwit-admin-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.dwit-admin-pill-green {
+  background: #e1f5ea;
+  color: #216e4f;
+}
+
+.dwit-admin-pill-yellow {
+  background: #fff1d2;
+  color: #906500;
+}
+
+.dwit-admin-pill-red {
+  background: #ffe4e4;
+  color: #a22828;
+}
+
+.dwit-admin-table-wrap {
+  overflow-x: auto;
+}
+
+.dwit-admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.dwit-admin-table th,
+.dwit-admin-table td {
+  padding: 11px 9px;
+  text-align: left;
+  border-bottom: 1px solid #edf1f3;
+  font-size: 10px;
+  vertical-align: middle;
+}
+
+.dwit-admin-table th {
+  color: #7d8d98;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.dwit-admin-table td strong {
+  color: #1a3c53;
+}
+
+.dwit-admin-table-empty {
+  padding: 30px !important;
+  text-align: center !important;
+  color: #8898a4;
+}
+
+.dwit-admin-text-button {
+  margin-top: 12px;
+  padding: 0;
+  background: transparent;
+  color: #117f77;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dwit-admin-primary {
+  min-height: 37px;
+  padding: 0 13px;
+  border-radius: 9px;
+  background: #117f77;
+  color: white;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.dwit-admin-mini-empty,
+.dwit-admin-empty {
+  padding: 18px 0;
+  color: #83939e;
+  font-size: 10px;
+}
+
+.dwit-admin-diagnostic-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.dwit-admin-diagnostic-card {
+  padding: 13px;
+  border: 1px solid #e6ecef;
+  border-radius: 11px;
+  background: #fafcfc;
+}
+
+.dwit-admin-diagnostic-card strong,
+.dwit-admin-diagnostic-card span {
+  display: block;
+}
+
+.dwit-admin-diagnostic-card strong {
+  color: #1e4056;
+  font-size: 11px;
+}
+
+.dwit-admin-diagnostic-card > span {
+  margin: 5px 0 9px;
+  color: #87949e;
+  font-size: 9px;
+}
+
+.dwit-admin-role-matrix {
+  margin-top: 22px;
+}
+
+.dwit-admin-access-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.dwit-admin-access-card {
+  padding: 14px;
+  border: 1px solid #e6ecef;
+  border-radius: 12px;
+  background: #fafcfc;
+}
+
+.dwit-admin-access-card > strong,
+.dwit-admin-access-card > span {
+  display: block;
+}
+
+.dwit-admin-access-card > strong {
+  color: #17384d;
+  font-size: 12px;
+}
+
+.dwit-admin-access-card > span {
+  margin-top: 4px;
+  color: #117f77;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.dwit-admin-access-card ul {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dwit-admin-access-card li {
+  margin: 5px 0;
+  color: #73838f;
+  font-size: 9px;
+}
+
+.dwit-admin-ai-insight {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 11px 0;
+  border-bottom: 1px solid #edf1f3;
+}
+
+.dwit-admin-insight-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 4px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #7e9daf;
+}
+
+.dwit-admin-insight-critical,
+.dwit-admin-insight-high {
+  background: #c75a5a;
+}
+
+.dwit-admin-insight-medium {
+  background: #c89120;
+}
+
+.dwit-admin-insight-info {
+  background: #2e8f80;
+}
+
+.dwit-admin-ai-insight strong,
+.dwit-admin-ai-insight span {
+  display: block;
+}
+
+.dwit-admin-ai-insight strong {
+  color: #1d4056;
+  font-size: 10px;
+}
+
+.dwit-admin-ai-insight span {
+  margin-top: 3px;
+  color: #7b8c97;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.dwit-admin-ai-hero {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 15px;
+  border-radius: 13px;
+  background:
+    linear-gradient(
+      135deg,
+      #f0f6ff,
+      #f5efff
+    );
+  border: 1px solid #e1e6f0;
+  margin-bottom: 12px;
+}
+
+.dwit-admin-ai-orb {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 13px;
+  background: #e9e1ff;
+  color: #6b55af;
+  font-size: 18px;
+}
+
+.dwit-admin-ai-hero strong,
+.dwit-admin-ai-hero span {
+  display: block;
+}
+
+.dwit-admin-ai-hero strong {
+  color: #29455b;
+  font-size: 12px;
+}
+
+.dwit-admin-ai-hero span {
+  margin-top: 4px;
+  color: #768695;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.dwit-admin-ai-action {
+  width: 100%;
+  margin-top: 9px;
+  padding: 13px;
+  display: grid;
+  gap: 3px;
+  text-align: left;
+  border: 1px solid #e0e7ec;
+  border-radius: 12px;
+  background: #fbfcfd;
+  color: #25465b;
+  cursor: pointer;
+}
+
+.dwit-admin-ai-action:hover {
+  background: #f5faf9;
+  border-color: #cfe4df;
+}
+
+.dwit-admin-ai-action strong {
+  font-size: 10px;
+}
+
+.dwit-admin-ai-action span {
+  color: #83919b;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.dwit-admin-activity-list {
+  display: grid;
+}
+
+.dwit-admin-activity-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 11px 0;
+  border-bottom: 1px solid #edf1f3;
+}
+
+.dwit-admin-activity-icon {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: #eef5f6;
+  color: #117f77;
+  font-size: 11px;
+}
+
+.dwit-admin-activity-row strong,
+.dwit-admin-activity-row span {
+  display: block;
+}
+
+.dwit-admin-activity-row strong {
+  color: #24465b;
+  font-size: 10px;
+}
+
+.dwit-admin-activity-row span {
+  margin-top: 3px;
+  color: #82919c;
+  font-size: 9px;
+}
+
+.dwit-admin-activity-row time {
+  color: #9aa7b0;
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.dwit-admin-health-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.dwit-admin-health-card {
+  padding: 13px;
+  border: 1px solid #e6ecef;
+  border-radius: 12px;
+  background: #fafcfc;
+}
+
+.dwit-admin-health-card > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dwit-admin-health-card > div span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2e987f;
+}
+
+.dwit-admin-health-card strong {
+  color: #315068;
+  font-size: 10px;
+}
+
+.dwit-admin-health-card b {
+  display: block;
+  margin-top: 8px;
+  color: #176c58;
+  font-size: 10px;
+}
+
+.dwit-admin-architecture {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.dwit-admin-architecture > div:not(.dwit-admin-architecture-arrow) {
+  width: min(250px, 100%);
+  padding: 13px;
+  display: grid;
+  gap: 3px;
+  text-align: center;
+  border: 1px solid #dfe8eb;
+  border-radius: 11px;
+  background: #fbfcfd;
+}
+
+.dwit-admin-architecture strong {
+  color: #1d4057;
+  font-size: 11px;
+}
+
+.dwit-admin-architecture span {
+  color: #8897a0;
+  font-size: 9px;
+}
+
+.dwit-admin-architecture-arrow {
+  color: #117f77;
+  font-size: 15px;
+}
+
+.dwit-admin-loading-card {
+  min-height: 270px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 7px;
+  border: 1px solid #dfe7ed;
+  border-radius: 17px;
+  background: rgba(255,255,255,.88);
+  color: #768995;
+  text-align: center;
+}
+
+.dwit-admin-loading-card strong {
+  color: #2c4c61;
+  font-size: 13px;
+}
+
+.dwit-admin-loading-card span {
+  font-size: 10px;
+}
+
+.dwit-admin-spinner {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid #dbe7ea;
+  border-top-color: #117f77;
+  animation: dwitAdminSpin .85s linear infinite;
+  margin-bottom: 5px;
+}
+
+@keyframes dwitAdminSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dwit-admin-error-card {
+  min-height: 310px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 10px;
+  padding: 30px;
+  border: 1px solid #eadede;
+  border-radius: 17px;
+  background: #fffafa;
+  text-align: center;
+}
+
+.dwit-admin-error-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #ffe4e4;
+  color: #a22828;
+  font-weight: 800;
+}
+
+.dwit-admin-error-card h2 {
+  margin: 0;
+  color: #713a3a;
+  font-family: "Manrope", sans-serif;
+  font-size: 20px;
+}
+
+.dwit-admin-error-card p {
+  max-width: 550px;
+  margin: 0;
+  color: #8a6969;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+@media (max-width: 1250px) {
+  .dwit-admin-stat-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .dwit-admin-stat-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 980px) {
+  .dwit-admin-sidebar {
+    width: 225px;
+  }
+
+  .dwit-admin-layout-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .dwit-admin-panel-large {
+    grid-column: auto;
+  }
+
+  .dwit-admin-phc-detail-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .dwit-admin-diagnostic-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dwit-admin-access-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .dwit-admin-shell {
+    display: block;
+  }
+
+  .dwit-admin-sidebar {
+    width: 100%;
+    min-height: auto;
+    position: static;
+  }
+
+  .dwit-admin-nav {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dwit-admin-main {
+    padding: 18px 14px 35px;
+  }
+
+  .dwit-admin-topbar {
+    display: grid;
+  }
+
+  .dwit-admin-top-actions {
+    justify-content: space-between;
+  }
+
+  .dwit-admin-stat-grid,
+  .dwit-admin-stat-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dwit-admin-phc-detail-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dwit-admin-donut-wrap {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .dwit-admin-search,
+  .dwit-admin-select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .dwit-admin-diagnostic-grid,
+  .dwit-admin-health-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 430px) {
+  .dwit-admin-stat-grid,
+  .dwit-admin-stat-grid-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .dwit-admin-nav {
+    grid-template-columns: 1fr;
+  }
 }

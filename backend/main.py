@@ -1281,6 +1281,12 @@ def initialize_database():
             "doctor",
             "PHC-DEVANAHALLI",
         ),
+        (
+            "ADMIN001",
+            "DWIT System Administrator",
+            "admin",
+            None,
+        ),
     ]
 
     for user in demo_users:
@@ -1489,6 +1495,8 @@ def normalize_role(role: str) -> str:
         "asha_worker": "asha",
         "asha worker": "asha",
         "asha": "asha",
+        "administrator": "admin",
+        "admin": "admin",
         "patient": "patient",
     }
 
@@ -2227,6 +2235,708 @@ Do not include markdown.
                 "If you feel seriously unwell, seek medical attention promptly."
             )
         }
+
+# =========================================================
+# ADMIN COMMAND CENTER
+# =========================================================
+
+def require_admin(
+    db,
+    actor_id: str
+):
+
+    user = get_user(
+        db,
+        actor_id
+    )
+
+    if not user or user["role"] != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Administrator access required"
+        )
+
+    return user
+
+
+@app.get("/admin/overview")
+async def admin_overview(
+    actor_id: str
+):
+
+    db = get_db()
+
+    require_admin(
+        db,
+        actor_id
+    )
+
+    phc_rows = db.execute(
+        """
+        SELECT
+            id,
+            name,
+            facility_type
+        FROM facilities
+        WHERE facility_type = 'PHC'
+        ORDER BY name
+        """
+    ).fetchall()
+
+    phcs = []
+
+    for phc in phc_rows:
+
+        facility_id = phc["id"]
+
+        patient_count = db.execute(
+            """
+            SELECT COUNT(*)
+            AS count
+            FROM patients
+            WHERE facility_id = ?
+            """,
+            (facility_id,)
+        ).fetchone()["count"]
+
+        active_pregnancies = db.execute(
+            """
+            SELECT COUNT(*)
+            AS count
+            FROM maternal_pregnancies
+            WHERE facility_id = ?
+              AND status = 'Active'
+            """,
+            (facility_id,)
+        ).fetchone()["count"]
+
+        children_0_6 = db.execute(
+            """
+            SELECT COUNT(*)
+            AS count
+            FROM children
+            WHERE facility_id = ?
+            """,
+            (facility_id,)
+        ).fetchone()["count"]
+
+        asha_count = db.execute(
+            """
+            SELECT COUNT(*)
+            AS count
+            FROM users
+            WHERE facility_id = ?
+              AND role = 'asha'
+              AND active = 1
+            """,
+            (facility_id,)
+        ).fetchone()["count"]
+
+        doctor_count = db.execute(
+            """
+            SELECT COUNT(*)
+            AS count
+            FROM users
+            WHERE facility_id = ?
+              AND role = 'doctor'
+              AND active = 1
+            """,
+            (facility_id,)
+        ).fetchone()["count"]
+
+        phcs.append(
+            {
+                "id": facility_id,
+                "name": phc["name"],
+                "patient_count": patient_count,
+                "active_pregnancies":
+                    active_pregnancies,
+                "children_0_6":
+                    children_0_6,
+                "asha_count":
+                    asha_count,
+                "doctor_count":
+                    doctor_count,
+                "staff_count":
+                    asha_count +
+                    doctor_count
+            }
+        )
+
+    summary = {
+
+        "total_patients":
+            db.execute(
+                """
+                SELECT COUNT(*)
+                FROM patients
+                """
+            ).fetchone()[0],
+
+        "active_pregnancies":
+            db.execute(
+                """
+                SELECT COUNT(*)
+                FROM maternal_pregnancies
+                WHERE status = 'Active'
+                """
+            ).fetchone()[0],
+
+        "children_0_6":
+            db.execute(
+                """
+                SELECT COUNT(*)
+                FROM children
+                """
+            ).fetchone()[0],
+
+        "asha_workers":
+            db.execute(
+                """
+                SELECT COUNT(*)
+                FROM users
+                WHERE role = 'asha'
+                  AND active = 1
+                """
+            ).fetchone()[0],
+
+        "doctors":
+            db.execute(
+                """
+                SELECT COUNT(*)
+                FROM users
+                WHERE role = 'doctor'
+                  AND active = 1
+                """
+            ).fetchone()[0],
+
+        "pending_referrals":
+            db.execute(
+                """
+                SELECT COUNT(*)
+                FROM referrals
+                WHERE status IN (
+                    'Pending',
+                    'Accepted',
+                    'In Progress'
+                )
+                """
+            ).fetchone()[0],
+
+        "appointments_today":
+            db.execute(
+                """
+                SELECT COUNT(*)
+                FROM appointments
+                WHERE DATE(appointment_date)
+                    = DATE('now')
+                """
+            ).fetchone()[0],
+
+    }
+
+
+    inventory_rows = db.execute(
+        """
+        SELECT
+            mi.id,
+            mi.facility_id,
+            f.name AS facility_name,
+            mi.medicine_name,
+            mi.category,
+            mi.stock_quantity,
+            mi.unit,
+            mi.minimum_stock,
+            mi.updated_at,
+            mi.updated_by
+        FROM medicine_inventory mi
+        LEFT JOIN facilities f
+            ON f.id = mi.facility_id
+        ORDER BY
+            CASE
+                WHEN mi.stock_quantity <= 0
+                    THEN 0
+                WHEN mi.stock_quantity <
+                     mi.minimum_stock
+                    THEN 1
+                ELSE 2
+            END,
+            f.name,
+            mi.medicine_name
+        """
+    ).fetchall()
+
+    inventory = []
+
+    for row in inventory_rows:
+
+        item = dict(row)
+
+        if (
+            item["stock_quantity"]
+            <= 0
+        ):
+
+            item["status"] = (
+                "Out of Stock"
+            )
+
+        elif (
+            item["stock_quantity"]
+            < item["minimum_stock"]
+        ):
+
+            item["status"] = (
+                "Low Stock"
+            )
+
+        else:
+
+            item["status"] = (
+                "Available"
+            )
+
+        inventory.append(
+            item
+        )
+
+
+    diagnostic_rows = db.execute(
+        """
+        SELECT
+            da.id,
+            da.facility_id,
+            f.name AS facility_name,
+            da.test_name,
+            da.category,
+            da.status,
+            da.updated_at,
+            da.updated_by
+        FROM diagnostic_availability da
+        LEFT JOIN facilities f
+            ON f.id = da.facility_id
+        ORDER BY
+            f.name,
+            da.test_name
+        """
+    ).fetchall()
+
+    diagnostics = [
+        dict(row)
+        for row in diagnostic_rows
+    ]
+
+
+    patient_rows = db.execute(
+        """
+        SELECT
+            p.patient_id,
+            p.name,
+            p.age,
+            p.gender,
+            p.phone,
+            p.village,
+            p.blood_group,
+            p.health_status,
+            p.facility_id,
+            f.name AS facility_name
+        FROM patients p
+        LEFT JOIN facilities f
+            ON f.id = p.facility_id
+        ORDER BY
+            f.name,
+            p.name
+        """
+    ).fetchall()
+
+    patients = [
+        dict(row)
+        for row in patient_rows
+    ]
+
+
+    user_rows = db.execute(
+        """
+        SELECT
+            u.user_id,
+            u.name,
+            u.role,
+            u.facility_id,
+            u.active,
+            u.created_at,
+            f.name AS facility_name
+        FROM users u
+        LEFT JOIN facilities f
+            ON f.id = u.facility_id
+        WHERE u.role IN (
+            'admin',
+            'asha',
+            'doctor'
+        )
+        ORDER BY
+            CASE
+                WHEN u.role = 'admin'
+                    THEN 0
+                WHEN u.role = 'doctor'
+                    THEN 1
+                ELSE 2
+            END,
+            u.name
+        """
+    ).fetchall()
+
+    users = [
+        dict(row)
+        for row in user_rows
+    ]
+
+
+    referral_rows = db.execute(
+        """
+        SELECT
+            r.id,
+            r.patient_id,
+            r.referred_by,
+            r.referred_to,
+            r.reason,
+            r.priority,
+            r.status,
+            r.from_facility_id,
+            r.to_facility_id,
+            ff.name AS from_facility_name,
+            tf.name AS to_facility_name
+        FROM referrals r
+        LEFT JOIN facilities ff
+            ON ff.id = r.from_facility_id
+        LEFT JOIN facilities tf
+            ON tf.id = r.to_facility_id
+        ORDER BY
+            CASE
+                WHEN r.status = 'Pending'
+                    THEN 0
+                WHEN r.status = 'Accepted'
+                    THEN 1
+                WHEN r.status = 'In Progress'
+                    THEN 2
+                ELSE 3
+            END,
+            r.id DESC
+        """
+    ).fetchall()
+
+    referrals = [
+        dict(row)
+        for row in referral_rows
+    ]
+
+
+    activity = []
+
+
+    visit_rows = db.execute(
+        """
+        SELECT
+            v.created_at,
+            v.recorded_by AS actor,
+            v.patient_id,
+            'Visit recorded' AS event_type
+        FROM visits v
+        ORDER BY
+            v.id DESC
+        LIMIT 8
+        """
+    ).fetchall()
+
+    for row in visit_rows:
+
+        activity.append(
+            {
+                "created_at":
+                    row["created_at"],
+                "actor":
+                    row["actor"],
+                "text":
+                    f"Visit recorded for "
+                    f"{row['patient_id']}",
+                "icon": "⌁"
+            }
+        )
+
+
+    anc_rows = db.execute(
+        """
+        SELECT
+            a.created_at,
+            a.created_by AS actor,
+            a.patient_id,
+            a.visit_number
+        FROM anc_visits a
+        ORDER BY
+            a.id DESC
+        LIMIT 8
+        """
+    ).fetchall()
+
+    for row in anc_rows:
+
+        activity.append(
+            {
+                "created_at":
+                    row["created_at"],
+                "actor":
+                    row["actor"],
+                "text":
+                    f"ANC {row['visit_number']} "
+                    f"recorded for "
+                    f"{row['patient_id']}",
+                "icon": "♡"
+            }
+        )
+
+
+    appointment_rows = db.execute(
+        """
+        SELECT
+            a.created_at,
+            COALESCE(
+                a.booked_by,
+                a.doctor_user_id,
+                'System'
+            ) AS actor,
+            a.patient_id,
+            a.status
+        FROM appointments a
+        ORDER BY
+            a.id DESC
+        LIMIT 8
+        """
+    ).fetchall()
+
+    for row in appointment_rows:
+
+        activity.append(
+            {
+                "created_at":
+                    row["created_at"],
+                "actor":
+                    row["actor"],
+                "text":
+                    f"Appointment "
+                    f"{row['status'] or 'updated'} "
+                    f"for {row['patient_id']}",
+                "icon": "▣"
+            }
+        )
+
+
+    referral_activity_rows = db.execute(
+        """
+        SELECT
+            r.id,
+            r.status,
+            r.referred_by AS actor,
+            r.patient_id
+        FROM referrals r
+        ORDER BY
+            r.id DESC
+        LIMIT 8
+        """
+    ).fetchall()
+
+    for row in referral_activity_rows:
+
+        activity.append(
+            {
+                "created_at":
+                    "",
+                "actor":
+                    row["actor"],
+                "text":
+                    f"Referral #{row['id']} "
+                    f"{row['status'] or 'updated'} "
+                    f"for {row['patient_id']}",
+                "icon": "↗"
+            }
+        )
+
+
+    activity.sort(
+        key=lambda item:
+            item.get(
+                "created_at"
+            ) or "",
+        reverse=True
+    )
+
+
+    ai_insights = []
+
+
+    low_inventory = [
+        item
+        for item in inventory
+        if item["status"] ==
+        "Low Stock"
+    ]
+
+    out_inventory = [
+        item
+        for item in inventory
+        if item["status"] ==
+        "Out of Stock"
+    ]
+
+
+    if out_inventory:
+
+        first = out_inventory[0]
+
+        ai_insights.append(
+            {
+                "level": "critical",
+                "title":
+                    "Out-of-stock medicine",
+                "message":
+                    f"{first['medicine_name']} "
+                    f"is unavailable at "
+                    f"{first['facility_name']}."
+            }
+        )
+
+
+    if low_inventory:
+
+        first = low_inventory[0]
+
+        ai_insights.append(
+            {
+                "level": "high",
+                "title":
+                    "Low inventory detected",
+                "message":
+                    f"{first['medicine_name']} "
+                    f"is below minimum stock at "
+                    f"{first['facility_name']}."
+            }
+        )
+
+
+    if summary[
+        "pending_referrals"
+    ] > 0:
+
+        ai_insights.append(
+            {
+                "level": "medium",
+                "title":
+                    "Referral queue requires review",
+                "message":
+                    f"{summary['pending_referrals']} "
+                    "referral(s) are not yet completed."
+            }
+        )
+
+
+    if summary[
+        "active_pregnancies"
+    ] > 0:
+
+        ai_insights.append(
+            {
+                "level": "info",
+                "title":
+                    "Maternal continuity active",
+                "message":
+                    f"{summary['active_pregnancies']} "
+                    "active pregnancy record(s) "
+                    "are being tracked."
+            }
+        )
+
+
+    if not ai_insights:
+
+        ai_insights.append(
+            {
+                "level": "info",
+                "title":
+                    "No major operational alerts",
+                "message":
+                    "The current dataset has no "
+                    "priority operational alerts."
+            }
+        )
+
+
+    system = {
+
+        "api_status":
+            "Operational",
+
+        "database_status":
+            "Connected",
+
+        "frontend_status":
+            "Online",
+
+        "auth_status":
+            "Operational",
+
+        "phc_total":
+            len(phcs),
+
+        "phc_online":
+            len(phcs),
+
+        "generated_at":
+            datetime.utcnow().isoformat()
+            + "Z"
+    }
+
+
+    db.close()
+
+
+    return {
+
+        "success":
+            True,
+
+        "summary":
+            summary,
+
+        "phcs":
+            phcs,
+
+        "inventory":
+            inventory,
+
+        "diagnostics":
+            diagnostics,
+
+        "patients":
+            patients,
+
+        "users":
+            users,
+
+        "referrals":
+            referrals,
+
+        "activity":
+            activity[
+                :30
+            ],
+
+        "ai_insights":
+            ai_insights,
+
+        "system":
+            system
+    }
+
+
+
 # =========================================================
 # BASIC ROUTES
 # =========================================================
@@ -2476,6 +3186,7 @@ async def login(
         "patient",
         "asha",
         "doctor",
+        "admin",
     ]:
 
         return {
@@ -2484,6 +3195,39 @@ async def login(
         }
 
     db = get_db()
+
+    # -----------------------------------------------------
+    # ADMINISTRATOR
+    # -----------------------------------------------------
+
+    if role == "admin":
+
+        user = get_user(
+            db,
+            user_id
+        )
+
+        db.close()
+
+        if not user or user["role"] != "admin":
+
+            return {
+                "success": False,
+                "message": "Administrator ID not found",
+            }
+
+        return {
+            "success": True,
+            "message": "Administrator authentication successful",
+            "user": {
+                "user_id": user["user_id"],
+                "name": user["name"],
+                "role": "admin",
+                "facility_id": None,
+                "facility": "All PHCs",
+                "facility_type": "SYSTEM",
+            },
+        }
 
     # -----------------------------------------------------
     # PATIENT
