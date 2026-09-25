@@ -186,6 +186,10 @@ const baseText = {
     officerId: 'Medical Officer ID',
     officerPlaceholder: 'Enter your authorized officer ID',
     officerHelper: 'Select your assigned facility before continuing.',
+    admin: 'Administrator',
+    adminId: 'Administrator ID',
+    adminPlaceholder: 'Enter ADMIN001',
+    adminHelper: 'System-wide administration access.',
     facilityType: 'Facility Type',
     selectFacilityType: 'Select facility type',
     facility: 'Facility',
@@ -650,6 +654,13 @@ const roles = [
     fieldKey: 'officerId',
     placeholderKey: 'officerPlaceholder',
     helperKey: 'officerHelper'
+  },
+  {
+    id: 'admin',
+    labelKey: 'admin',
+    fieldKey: 'adminId',
+    placeholderKey: 'adminPlaceholder',
+    helperKey: 'adminHelper'
   }
 ]
 
@@ -1099,7 +1110,8 @@ function renderLogin() {
 
 
             ${
-              selectedRole !== 'patient'
+              selectedRole !== 'patient' &&
+              selectedRole !== 'admin'
                 ? `
 
                   <div class="facility-grid">
@@ -1472,6 +1484,7 @@ async function handleLogin() {
 
   if (
     selectedRole !== 'patient' &&
+    selectedRole !== 'admin' &&
     !selectedFacilityType
   ) {
 
@@ -1485,6 +1498,7 @@ async function handleLogin() {
 
   if (
     selectedRole !== 'patient' &&
+    selectedRole !== 'admin' &&
     !selectedFacility
   ) {
 
@@ -1503,6 +1517,36 @@ async function handleLogin() {
 
 
   try {
+
+    if (selectedRole === 'admin') {
+
+      const data =
+        await apiRequest(
+          '/login',
+          {
+            method: 'POST',
+
+            body: JSON.stringify({
+              user_id: userId,
+              role: 'admin',
+              facility_type: '',
+              facility: ''
+            })
+          }
+        )
+
+      localStorage.setItem(
+        'sihgpt_user',
+        JSON.stringify({
+          ...data,
+          user_id: userId,
+          role: 'admin'
+        })
+      )
+
+      await renderAdminDashboard()
+      return
+    }
 
     const data =
       await apiRequest(
@@ -1552,6 +1596,12 @@ async function handleLogin() {
       await renderPatientDashboard(
         userId
       )
+
+    } else if (
+      selectedRole === 'admin'
+    ) {
+
+      await renderAdminDashboard()
 
     } else {
 
@@ -18956,8 +19006,3113 @@ if (
 }
 
 
+
+/* =========================================================
+   ADMIN COMMAND CENTER
+========================================================= */
+
+let adminOverviewCache = null
+let adminSelectedTab = 'dashboard'
+
+async function getAdminActorId() {
+
+  try {
+
+    const session =
+      JSON.parse(
+        localStorage.getItem(
+          'sihgpt_user'
+        ) || '{}'
+      )
+
+    return (
+      session?.user?.user_id ||
+      session?.user_id ||
+      'ADMIN001'
+    )
+
+  } catch {
+
+    return 'ADMIN001'
+  }
+}
+
+
+function adminStatusPill(
+  status
+) {
+
+  const normalized =
+    String(
+      status || ''
+    ).toLowerCase()
+
+  if (
+    normalized.includes('out') ||
+    normalized.includes('critical') ||
+    normalized.includes('pending')
+  ) {
+    return `<span class="dwit-admin-pill dwit-admin-pill-red">${escapeHtml(status)}</span>`
+  }
+
+  if (
+    normalized.includes('low') ||
+    normalized.includes('limited') ||
+    normalized.includes('review')
+  ) {
+    return `<span class="dwit-admin-pill dwit-admin-pill-yellow">${escapeHtml(status)}</span>`
+  }
+
+  return `<span class="dwit-admin-pill dwit-admin-pill-green">${escapeHtml(status || 'Active')}</span>`
+}
+
+
+function adminBarWidth(
+  value,
+  max
+) {
+
+  const safeMax =
+    Math.max(
+      Number(max) || 1,
+      1
+    )
+
+  const percentage =
+    Math.max(
+      4,
+      Math.min(
+        100,
+        (Number(value) || 0) /
+          safeMax *
+          100
+      )
+    )
+
+  return `${percentage}%`
+}
+
+
+function adminFormatNumber(
+  value
+) {
+
+  return Number(
+    value || 0
+  ).toLocaleString(
+    'en-IN'
+  )
+}
+
+
+function renderAdminShell() {
+
+  app.innerHTML = `
+
+    <div class="dwit-admin-shell">
+
+      <aside class="dwit-admin-sidebar">
+
+        <div class="dwit-admin-brand">
+          <div class="dwit-admin-logo">
+            DWIT
+          </div>
+
+          <div>
+            <strong>DWIT</strong>
+            <span>COMMAND CENTER</span>
+          </div>
+        </div>
+
+        <div class="dwit-admin-sidebar-label">
+          SYSTEM MANAGEMENT
+        </div>
+
+        <nav class="dwit-admin-nav">
+
+          <button
+            type="button"
+            data-admin-tab="dashboard"
+          >
+            <span>◉</span>
+            Dashboard
+          </button>
+
+          <button
+            type="button"
+            data-admin-tab="analytics"
+          >
+            <span>▥</span>
+            PHC Analytics
+          </button>
+
+          <button
+            type="button"
+            data-admin-tab="patients"
+          >
+            <span>♙</span>
+            Patients
+          </button>
+
+          <button
+            type="button"
+            data-admin-tab="inventory"
+          >
+            <span>▣</span>
+            Medical Inventory
+          </button>
+
+          <button
+            type="button"
+            data-admin-tab="staff"
+          >
+            <span>◫</span>
+            Staff & Roles
+          </button>
+
+          <button
+            type="button"
+            data-admin-tab="referrals"
+          >
+            <span>↗</span>
+            Referrals
+          </button>
+
+          <button
+            type="button"
+            data-admin-tab="ai"
+          >
+            <span>✦</span>
+            AI Copilot
+          </button>
+
+          <button
+            type="button"
+            data-admin-tab="audit"
+          >
+            <span>◷</span>
+            Audit Logs
+          </button>
+
+          <button
+            type="button"
+            data-admin-tab="system"
+          >
+            <span>◌</span>
+            System Health
+          </button>
+
+        </nav>
+
+        <div class="dwit-admin-sidebar-footer">
+
+          <div class="dwit-admin-user-avatar">
+            A
+          </div>
+
+          <div class="dwit-admin-user-copy">
+            <strong>System Administrator</strong>
+            <span>ADMIN001 · All PHCs</span>
+          </div>
+
+        </div>
+
+        <button
+          type="button"
+          class="dwit-admin-logout"
+          id="adminLogoutBtn"
+        >
+          Logout
+        </button>
+
+      </aside>
+
+
+      <main class="dwit-admin-main">
+
+        <header class="dwit-admin-topbar">
+
+          <div>
+
+            <div class="dwit-admin-eyebrow">
+              DWIT · HEALTH NETWORK
+            </div>
+
+            <h1 id="dwitAdminPageTitle">
+              Admin Command Center
+            </h1>
+
+            <p id="dwitAdminPageSubtitle">
+              System-wide healthcare coordination overview
+            </p>
+
+          </div>
+
+          <div class="dwit-admin-top-actions">
+
+            <div class="dwit-admin-sync">
+              <span></span>
+              Live data
+            </div>
+
+            <button
+              type="button"
+              class="dwit-admin-refresh"
+              id="dwitAdminRefreshBtn"
+            >
+              ↻ Refresh
+            </button>
+
+          </div>
+
+        </header>
+
+
+        <section id="dwitAdminContent">
+
+          <div class="dwit-admin-loading-card">
+            <div class="dwit-admin-spinner"></div>
+            <strong>Loading DWIT command center...</strong>
+            <span>Reading PHC, patient, inventory and referral data.</span>
+          </div>
+
+        </section>
+
+      </main>
+
+    </div>
+
+  `
+
+
+  document
+    .querySelectorAll(
+      '[data-admin-tab]'
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          'click',
+          () => {
+
+            adminSelectedTab =
+              button.dataset.adminTab
+
+            renderAdminView()
+
+          }
+        )
+
+      }
+    )
+
+
+  document
+    .querySelector(
+      '#adminLogoutBtn'
+    )
+    ?.addEventListener(
+      'click',
+      logout
+    )
+
+
+  document
+    .querySelector(
+      '#dwitAdminRefreshBtn'
+    )
+    ?.addEventListener(
+      'click',
+      async () => {
+
+        adminOverviewCache = null
+        await renderAdminDashboard()
+
+      }
+    )
+}
+
+
+async function renderAdminDashboard() {
+
+  renderAdminShell()
+
+  try {
+
+    const actorId =
+      await getAdminActorId()
+
+    const data =
+      await apiGet(
+        `/admin/overview?actor_id=${encodeURIComponent(
+          actorId
+        )}`
+      )
+
+    adminOverviewCache =
+      data
+
+    await renderAdminView()
+
+  } catch (error) {
+
+    console.error(
+      'Admin dashboard:',
+      error
+    )
+
+    const content =
+      document.querySelector(
+        '#dwitAdminContent'
+      )
+
+    if (content) {
+
+      content.innerHTML = `
+
+        <div class="dwit-admin-error-card">
+
+          <div class="dwit-admin-error-icon">
+            !
+          </div>
+
+          <h2>
+            Unable to load Admin Dashboard
+          </h2>
+
+          <p>
+            ${escapeHtml(
+              error?.message ||
+              'The admin data service could not be reached.'
+            )}
+          </p>
+
+          <button
+            type="button"
+            class="dwit-admin-primary"
+            id="dwitAdminRetryBtn"
+          >
+            Retry
+          </button>
+
+        </div>
+
+      `
+
+      document
+        .querySelector(
+          '#dwitAdminRetryBtn'
+        )
+        ?.addEventListener(
+          'click',
+          renderAdminDashboard
+        )
+    }
+
+  }
+}
+
+
+async function renderAdminView() {
+
+  if (!adminOverviewCache) {
+    return
+  }
+
+  document
+    .querySelectorAll(
+      '[data-admin-tab]'
+    )
+    .forEach(
+      button => {
+
+        button.classList.toggle(
+          'active',
+          button.dataset.adminTab ===
+            adminSelectedTab
+        )
+
+      }
+    )
+
+
+  const titles = {
+
+    dashboard: [
+      'Admin Command Center',
+      'System-wide healthcare coordination overview'
+    ],
+
+    analytics: [
+      'PHC Patient Analytics',
+      'Patient distribution and service activity across Primary Health Centres'
+    ],
+
+    patients: [
+      'Patient Tracking',
+      'System-wide patient records grouped by PHC'
+    ],
+
+    inventory: [
+      'Medical Inventory',
+      'Medicine and diagnostic availability across facilities'
+    ],
+
+    staff: [
+      'Staff & Roles',
+      'Authorized users and facility assignments'
+    ],
+
+    referrals: [
+      'Referral Management',
+      'Cross-facility referrals and current status'
+    ],
+
+    ai: [
+      'DWIT AI Copilot',
+      'Operational intelligence for the health network'
+    ],
+
+    audit: [
+      'Audit Logs',
+      'Recent system activity and record changes'
+    ],
+
+    system: [
+      'System Health',
+      'Current application and PHC connectivity'
+    ]
+
+  }
+
+
+  const pageInfo =
+    titles[
+      adminSelectedTab
+    ] ||
+    titles.dashboard
+
+
+  const title =
+    document.querySelector(
+      '#dwitAdminPageTitle'
+    )
+
+  const subtitle =
+    document.querySelector(
+      '#dwitAdminPageSubtitle'
+    )
+
+  if (title) {
+    title.textContent =
+      pageInfo[0]
+  }
+
+  if (subtitle) {
+    subtitle.textContent =
+      pageInfo[1]
+  }
+
+
+  const content =
+    document.querySelector(
+      '#dwitAdminContent'
+    )
+
+  if (!content) {
+    return
+  }
+
+
+  const data =
+    adminOverviewCache
+
+
+  if (
+    adminSelectedTab ===
+    'dashboard'
+  ) {
+
+    content.innerHTML =
+      renderAdminDashboardHome(
+        data
+      )
+
+    return
+  }
+
+
+  if (
+    adminSelectedTab ===
+    'analytics'
+  ) {
+
+    content.innerHTML =
+      renderAdminAnalytics(
+        data
+      )
+
+    return
+  }
+
+
+  if (
+    adminSelectedTab ===
+    'patients'
+  ) {
+
+    content.innerHTML =
+      renderAdminPatients(
+        data
+      )
+
+    attachAdminPatientSearch()
+
+    return
+  }
+
+
+  if (
+    adminSelectedTab ===
+    'inventory'
+  ) {
+
+    content.innerHTML =
+      renderAdminInventory(
+        data
+      )
+
+    return
+  }
+
+
+  if (
+    adminSelectedTab ===
+    'staff'
+  ) {
+
+    content.innerHTML =
+      renderAdminStaff(
+        data
+      )
+
+    return
+  }
+
+
+  if (
+    adminSelectedTab ===
+    'referrals'
+  ) {
+
+    content.innerHTML =
+      renderAdminReferrals(
+        data
+      )
+
+    return
+  }
+
+
+  if (
+    adminSelectedTab ===
+    'ai'
+  ) {
+
+    content.innerHTML =
+      renderAdminAI(
+        data
+      )
+
+    return
+  }
+
+
+  if (
+    adminSelectedTab ===
+    'audit'
+  ) {
+
+    content.innerHTML =
+      renderAdminAudit(
+        data
+      )
+
+    return
+  }
+
+
+  if (
+    adminSelectedTab ===
+    'system'
+  ) {
+
+    content.innerHTML =
+      renderAdminSystem(
+        data
+      )
+
+  }
+}
+
+
+function renderAdminDashboardHome(
+  data
+) {
+
+  const summary =
+    data.summary || {}
+
+  const phcs =
+    data.phcs || []
+
+  const inventory =
+    data.inventory || []
+
+  const activity =
+    data.activity || []
+
+
+  const lowStock =
+    inventory.filter(
+      item =>
+        item.status ===
+        'Low Stock'
+    ).length
+
+  const outOfStock =
+    inventory.filter(
+      item =>
+        item.status ===
+        'Out of Stock'
+    ).length
+
+
+  return `
+
+    <div class="dwit-admin-stat-grid">
+
+      ${adminStatCard(
+        'Total Patients',
+        summary.total_patients,
+        'Across all PHCs',
+        '◉'
+      )}
+
+      ${adminStatCard(
+        'Active Pregnancies',
+        summary.active_pregnancies,
+        'Maternal continuity',
+        '♡'
+      )}
+
+      ${adminStatCard(
+        'Children 0–6',
+        summary.children_0_6,
+        'Child tracking',
+        '⌂'
+      )}
+
+      ${adminStatCard(
+        'ASHA Workers',
+        summary.asha_workers,
+        'Active staff',
+        '♙'
+      )}
+
+      ${adminStatCard(
+        'Doctors',
+        summary.doctors,
+        'Medical officers',
+        '✚'
+      )}
+
+      ${adminStatCard(
+        'Pending Referrals',
+        summary.pending_referrals,
+        'Need follow-up',
+        '↗',
+        summary.pending_referrals > 0
+      )}
+
+    </div>
+
+
+    <div class="dwit-admin-layout-2">
+
+      <section class="dwit-admin-panel">
+
+        <div class="dwit-admin-panel-heading">
+
+          <div>
+            <h2>
+              Patients by PHC
+            </h2>
+
+            <p>
+              Live distribution of registered patients
+            </p>
+          </div>
+
+          <span class="dwit-admin-chip">
+            ${phcs.length} PHCs
+          </span>
+
+        </div>
+
+
+        ${renderAdminPhcBars(
+          phcs
+        )}
+
+      </section>
+
+
+      <section class="dwit-admin-panel">
+
+        <div class="dwit-admin-panel-heading">
+
+          <div>
+            <h2>
+              ✦ DWIT AI Insights
+            </h2>
+
+            <p>
+              Operational attention queue
+            </p>
+          </div>
+
+          <span class="dwit-admin-ai-tag">
+            AI
+          </span>
+
+        </div>
+
+
+        ${renderAdminAIInsightList(
+          data.ai_insights || []
+        )}
+
+        <button
+          type="button"
+          class="dwit-admin-text-button"
+          data-admin-ai="open"
+        >
+          Open AI Copilot →
+        </button>
+
+      </section>
+
+
+      <section class="dwit-admin-panel">
+
+        <div class="dwit-admin-panel-heading">
+
+          <div>
+            <h2>
+              Medical Inventory
+            </h2>
+
+            <p>
+              Stock requiring attention
+            </p>
+          </div>
+
+          <span class="
+            dwit-admin-chip
+            ${lowStock || outOfStock
+              ? 'dwit-admin-chip-warning'
+              : ''
+            }
+          ">
+            ${lowStock + outOfStock} alerts
+          </span>
+
+        </div>
+
+
+        ${renderAdminInventoryPreview(
+          inventory
+        )}
+
+        <button
+          type="button"
+          class="dwit-admin-text-button"
+          data-admin-tab-shortcut="inventory"
+        >
+          View Inventory →
+        </button>
+
+      </section>
+
+
+      <section class="dwit-admin-panel">
+
+        <div class="dwit-admin-panel-heading">
+
+          <div>
+            <h2>
+              PHC Network
+            </h2>
+
+            <p>
+              Primary Health Centre overview
+            </p>
+          </div>
+
+          <span class="
+            dwit-admin-chip
+            dwit-admin-chip-success
+          ">
+            Connected
+          </span>
+
+        </div>
+
+
+        <div class="dwit-admin-network-list">
+
+          ${phcs
+            .map(
+              phc => `
+
+                <div class="dwit-admin-network-row">
+
+                  <div>
+
+                    <strong>
+                      ${escapeHtml(
+                        phc.name
+                      )}
+                    </strong>
+
+                    <span>
+                      ${adminFormatNumber(
+                        phc.patient_count
+                      )} patients ·
+                      ${adminFormatNumber(
+                        phc.staff_count
+                      )} staff
+                    </span>
+
+                  </div>
+
+                  <span
+                    class="dwit-admin-online-dot"
+                  >
+                    ●
+                  </span>
+
+                </div>
+
+              `
+            )
+            .join('')}
+
+        </div>
+
+      </section>
+
+    </div>
+
+
+    <section class="dwit-admin-panel dwit-admin-activity-panel">
+
+      <div class="dwit-admin-panel-heading">
+
+        <div>
+          <h2>
+            Recent System Activity
+          </h2>
+
+          <p>
+            Latest records and workflow events
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="dwit-admin-text-button"
+          data-admin-tab-shortcut="audit"
+        >
+          View all →
+        </button>
+
+      </div>
+
+
+      ${renderAdminActivityRows(
+        activity.slice(
+          0,
+          6
+        )
+      )}
+
+    </section>
+
+  `
+}
+
+
+function adminStatCard(
+  label,
+  value,
+  note,
+  icon,
+  attention = false
+) {
+
+  return `
+
+    <article class="
+      dwit-admin-stat-card
+      ${attention
+        ? 'dwit-admin-stat-attention'
+        : ''
+      }
+    ">
+
+      <div class="dwit-admin-stat-top">
+
+        <span>
+          ${escapeHtml(label)}
+        </span>
+
+        <b>
+          ${icon}
+        </b>
+
+      </div>
+
+      <strong>
+        ${adminFormatNumber(
+          value
+        )}
+      </strong>
+
+      <small>
+        ${escapeHtml(note)}
+      </small>
+
+    </article>
+
+  `
+}
+
+
+function renderAdminPhcBars(
+  phcs
+) {
+
+  if (!phcs.length) {
+
+    return `
+      <div class="dwit-admin-empty">
+        No PHC data available.
+      </div>
+    `
+
+  }
+
+
+  const max =
+    Math.max(
+      ...phcs.map(
+        phc =>
+          Number(
+            phc.patient_count
+          ) || 0
+      ),
+      1
+    )
+
+
+  return `
+
+    <div class="dwit-admin-bars">
+
+      ${phcs
+        .map(
+          phc => `
+
+            <div class="dwit-admin-bar-row">
+
+              <div
+                class="
+                  dwit-admin-bar-label
+                "
+              >
+
+                <span>
+                  ${escapeHtml(
+                    phc.name
+                  )}
+                </span>
+
+                <strong>
+                  ${adminFormatNumber(
+                    phc.patient_count
+                  )}
+                </strong>
+
+              </div>
+
+              <div
+                class="dwit-admin-bar-track"
+              >
+
+                <div
+                  class="dwit-admin-bar-fill"
+                  style="
+                    width:${adminBarWidth(
+                      phc.patient_count,
+                      max
+                    )}
+                  "
+                ></div>
+
+              </div>
+
+            </div>
+
+          `
+        )
+        .join('')}
+
+    </div>
+
+  `
+}
+
+
+function renderAdminAnalytics(
+  data
+) {
+
+  const phcs =
+    data.phcs || []
+
+  const totalPatients =
+    Math.max(
+      1,
+      Number(
+        data.summary?.total_patients
+      ) || 0
+    )
+
+
+  const pregnancyTotal =
+    phcs.reduce(
+      (
+        sum,
+        phc
+      ) =>
+        sum +
+        Number(
+          phc.active_pregnancies
+        || 0
+        ),
+      0
+    )
+
+  const childTotal =
+    phcs.reduce(
+      (
+        sum,
+        phc
+      ) =>
+        sum +
+        Number(
+          phc.children_0_6
+        || 0
+        ),
+      0
+    )
+
+
+  return `
+
+    <div class="dwit-admin-stat-grid dwit-admin-stat-grid-4">
+
+      ${adminStatCard(
+        'Patients',
+        data.summary?.total_patients,
+        'All PHCs',
+        '◉'
+      )}
+
+      ${adminStatCard(
+        'Pregnancies',
+        pregnancyTotal,
+        'Active maternal care',
+        '♡'
+      )}
+
+      ${adminStatCard(
+        'Children',
+        childTotal,
+        '0–6 years',
+        '⌂'
+      )}
+
+      ${adminStatCard(
+        'Referral Queue',
+        data.summary?.pending_referrals,
+        'Pending',
+        '↗',
+        true
+      )}
+
+    </div>
+
+
+    <div class="dwit-admin-layout-2">
+
+      <section class="dwit-admin-panel dwit-admin-panel-large">
+
+        <div class="dwit-admin-panel-heading">
+
+          <div>
+            <h2>
+              Patient Distribution by PHC
+            </h2>
+
+            <p>
+              Select a PHC to inspect its population
+            </p>
+          </div>
+
+          <select
+            id="adminPhcSelector"
+            class="dwit-admin-select"
+          >
+
+            <option value="all">
+              All PHCs
+            </option>
+
+            ${phcs
+              .map(
+                phc => `
+                  <option
+                    value="${escapeHtml(
+                      phc.id
+                    )}"
+                  >
+                    ${escapeHtml(
+                      phc.name
+                    )}
+                  </option>
+                `
+              )
+              .join('')}
+
+          </select>
+
+        </div>
+
+
+        ${renderAdminPhcBars(
+          phcs
+        )}
+
+
+        <div
+          id="adminSelectedPhcStats"
+          class="dwit-admin-phc-detail-grid"
+        >
+          ${renderAdminPhcDetail(
+            phcs[0]
+          )}
+        </div>
+
+      </section>
+
+
+      <section class="dwit-admin-panel">
+
+        <div class="dwit-admin-panel-heading">
+
+          <div>
+            <h2>
+              Care Mix
+            </h2>
+
+            <p>
+              Current network composition
+            </p>
+          </div>
+
+        </div>
+
+
+        ${renderAdminDonut(
+          [
+            [
+              'General Patients',
+              Math.max(
+                0,
+                Number(
+                  data.summary?.total_patients || 0
+                ) -
+                pregnancyTotal -
+                childTotal
+              )
+            ],
+            [
+              'Pregnant Women',
+              pregnancyTotal
+            ],
+            [
+              'Children 0–6',
+              childTotal
+            ]
+          ]
+        )}
+
+      </section>
+
+    </div>
+
+
+    <section class="dwit-admin-panel">
+
+      <div class="dwit-admin-panel-heading">
+
+        <div>
+          <h2>
+            PHC Service Snapshot
+          </h2>
+
+          <p>
+            Patient, maternal and child workload by facility
+          </p>
+        </div>
+
+      </div>
+
+
+      <div class="dwit-admin-service-table">
+
+        <div class="dwit-admin-service-head">
+          <span>PHC</span>
+          <span>Patients</span>
+          <span>Pregnancies</span>
+          <span>Children</span>
+          <span>Staff</span>
+        </div>
+
+        ${phcs
+          .map(
+            phc => `
+
+              <div class="dwit-admin-service-row">
+
+                <strong>
+                  ${escapeHtml(
+                    phc.name
+                  )}
+                </strong>
+
+                <span>
+                  ${adminFormatNumber(
+                    phc.patient_count
+                  )}
+                </span>
+
+                <span>
+                  ${adminFormatNumber(
+                    phc.active_pregnancies
+                  )}
+                </span>
+
+                <span>
+                  ${adminFormatNumber(
+                    phc.children_0_6
+                  )}
+                </span>
+
+                <span>
+                  ${adminFormatNumber(
+                    phc.staff_count
+                  )}
+                </span>
+
+              </div>
+
+            `
+          )
+          .join('')}
+
+      </div>
+
+    </section>
+
+  `
+
+}
+
+
+function renderAdminPhcDetail(
+  phc
+) {
+
+  if (!phc) {
+
+    return `
+      <div class="dwit-admin-empty">
+        Select a PHC.
+      </div>
+    `
+
+  }
+
+
+  return `
+
+    <div class="dwit-admin-phc-detail-card">
+
+      <span>Patients</span>
+      <strong>
+        ${adminFormatNumber(
+          phc.patient_count
+        )}
+      </strong>
+
+    </div>
+
+    <div class="dwit-admin-phc-detail-card">
+
+      <span>Pregnancies</span>
+      <strong>
+        ${adminFormatNumber(
+          phc.active_pregnancies
+        )}
+      </strong>
+
+    </div>
+
+    <div class="dwit-admin-phc-detail-card">
+
+      <span>Children 0–6</span>
+      <strong>
+        ${adminFormatNumber(
+          phc.children_0_6
+        )}
+      </strong>
+
+    </div>
+
+    <div class="dwit-admin-phc-detail-card">
+
+      <span>ASHA Workers</span>
+      <strong>
+        ${adminFormatNumber(
+          phc.asha_count
+        )}
+      </strong>
+
+    </div>
+
+    <div class="dwit-admin-phc-detail-card">
+
+      <span>Doctors</span>
+      <strong>
+        ${adminFormatNumber(
+          phc.doctor_count
+        )}
+      </strong>
+
+    </div>
+
+  `
+}
+
+
+function renderAdminDonut(
+  items
+) {
+
+  const total =
+    Math.max(
+      1,
+      items.reduce(
+        (
+          sum,
+          item
+        ) =>
+          sum +
+          Number(
+            item[1]
+          || 0
+          ),
+        0
+      )
+    )
+
+  const palette = [
+    '#117f77',
+    '#2f7aa2',
+    '#8d6bb8'
+  ]
+
+  let running =
+    0
+
+  const segments = []
+
+  items.forEach(
+    (
+      item,
+      index
+    ) => {
+
+      const value =
+        Number(
+          item[1]
+        ) || 0
+
+      const start =
+        running /
+        total *
+        360
+
+      running +=
+        value
+
+      const end =
+        running /
+        total *
+        360
+
+      segments.push(
+        `${palette[index % palette.length]} ${start}deg ${end}deg`
+      )
+
+    }
+  )
+
+  const background =
+    `conic-gradient(
+      ${segments.join(', ')}
+    )`
+
+  return `
+
+    <div class="dwit-admin-donut-wrap">
+
+      <div
+        class="dwit-admin-donut"
+        style="background:${background}"
+      >
+
+        <div class="dwit-admin-donut-hole">
+          <strong>
+            ${adminFormatNumber(
+              total
+            )}
+          </strong>
+
+          <span>
+            records
+          </span>
+        </div>
+
+      </div>
+
+
+      <div class="dwit-admin-legend">
+
+        ${items
+          .map(
+            (
+              item,
+              index
+            ) => `
+
+              <div>
+                <span
+                  class="dwit-admin-legend-dot"
+                  style="
+                    background:${
+                      [
+                        '#117f77',
+                        '#2f7aa2',
+                        '#8d6bb8'
+                      ][
+                        index % 3
+                      ]
+                    };
+                  "
+                ></span>
+
+                <label>
+                  ${escapeHtml(
+                    item[0]
+                  )}
+                </label>
+
+                <strong>
+                  ${adminFormatNumber(
+                    item[1]
+                  )}
+                </strong>
+              </div>
+
+            `
+          )
+          .join('')}
+
+      </div>
+
+    </div>
+
+  `
+}
+
+
+function renderAdminPatients(
+  data
+) {
+
+  const patients =
+    data.patients || []
+
+
+  return `
+
+    <section class="dwit-admin-panel">
+
+      <div class="dwit-admin-panel-heading">
+
+        <div>
+          <h2>
+            All PHC Patients
+          </h2>
+
+          <p>
+            ${adminFormatNumber(
+              patients.length
+            )} records
+          </p>
+        </div>
+
+        <input
+          id="adminPatientSearch"
+          class="dwit-admin-search"
+          placeholder="Search name, ID or PHC..."
+          type="search"
+        >
+
+      </div>
+
+
+      <div class="dwit-admin-table-wrap">
+
+        <table class="dwit-admin-table">
+
+          <thead>
+
+            <tr>
+              <th>Patient</th>
+              <th>Patient ID</th>
+              <th>PHC</th>
+              <th>Age</th>
+              <th>Status</th>
+            </tr>
+
+          </thead>
+
+          <tbody id="adminPatientRows">
+
+            ${renderAdminPatientRows(
+              patients
+            )}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+  `
+}
+
+
+function renderAdminPatientRows(
+  patients
+) {
+
+  if (!patients.length) {
+
+    return `
+      <tr>
+        <td
+          colspan="5"
+          class="dwit-admin-table-empty"
+        >
+          No patients found.
+        </td>
+      </tr>
+    `
+
+  }
+
+
+  return patients
+    .map(
+      patient => `
+
+        <tr
+          data-admin-search-row
+          data-search="
+            ${escapeHtml(
+              [
+                patient.name,
+                patient.patient_id,
+                patient.facility_name
+              ]
+                .filter(Boolean)
+                .join(' ')
+            )}
+          "
+        >
+
+          <td>
+            <strong>
+              ${escapeHtml(
+                patient.name ||
+                'Unnamed Patient'
+              )}
+            </strong>
+          </td>
+
+          <td>
+            ${escapeHtml(
+              patient.patient_id
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              patient.facility_name ||
+              '—'
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              patient.age ??
+              '—'
+            )}
+          </td>
+
+          <td>
+            ${adminStatusPill(
+              patient.health_status ||
+              'Stable'
+            )}
+          </td>
+
+        </tr>
+
+      `
+    )
+    .join('')
+}
+
+
+function attachAdminPatientSearch() {
+
+  const search =
+    document.querySelector(
+      '#adminPatientSearch'
+    )
+
+  const rows =
+    () =>
+      Array.from(
+        document.querySelectorAll(
+          '[data-admin-search-row]'
+        )
+      )
+
+
+  search?.addEventListener(
+    'input',
+    () => {
+
+      const query =
+        search.value
+          .trim()
+          .toLowerCase()
+
+      rows().forEach(
+        row => {
+
+          const haystack =
+            (
+              row.dataset.search ||
+              ''
+            ).toLowerCase()
+
+          row.style.display =
+            !query ||
+            haystack.includes(
+              query
+            )
+              ? ''
+              : 'none'
+
+        }
+      )
+
+    }
+  )
+
+}
+
+
+function renderAdminInventory(
+  data
+) {
+
+  const inventory =
+    data.inventory || []
+
+
+  const low =
+    inventory.filter(
+      item =>
+        item.status ===
+        'Low Stock'
+    )
+
+  const out =
+    inventory.filter(
+      item =>
+        item.status ===
+        'Out of Stock'
+    )
+
+
+  return `
+
+    <div class="dwit-admin-stat-grid dwit-admin-stat-grid-4">
+
+      ${adminStatCard(
+        'Inventory Items',
+        inventory.length,
+        'Across all facilities',
+        '▣'
+      )}
+
+      ${adminStatCard(
+        'Low Stock',
+        low.length,
+        'Below minimum',
+        '!'
+      )}
+
+      ${adminStatCard(
+        'Out of Stock',
+        out.length,
+        'Immediate attention',
+        '×',
+        true
+      )}
+
+      ${adminStatCard(
+        'Diagnostics',
+        data.diagnostics?.length || 0,
+        'Tracked services',
+        '⌁'
+      )}
+
+    </div>
+
+
+    <section class="dwit-admin-panel">
+
+      <div class="dwit-admin-panel-heading">
+
+        <div>
+          <h2>
+            Medicine Inventory
+          </h2>
+
+          <p>
+            All facility stock levels
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="dwit-admin-primary"
+          data-admin-demo-action="transfer"
+        >
+          Transfer Stock
+        </button>
+
+      </div>
+
+
+      <div class="dwit-admin-table-wrap">
+
+        <table class="dwit-admin-table">
+
+          <thead>
+            <tr>
+              <th>Medicine</th>
+              <th>Category</th>
+              <th>PHC / Facility</th>
+              <th>Stock</th>
+              <th>Minimum</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+            ${inventory
+              .map(
+                item => `
+
+                  <tr>
+
+                    <td>
+                      <strong>
+                        ${escapeHtml(
+                          item.medicine_name
+                        )}
+                      </strong>
+                    </td>
+
+                    <td>
+                      ${escapeHtml(
+                        item.category ||
+                        'General'
+                      )}
+                    </td>
+
+                    <td>
+                      ${escapeHtml(
+                        item.facility_name ||
+                        item.facility_id
+                      )}
+                    </td>
+
+                    <td>
+                      ${adminFormatNumber(
+                        item.stock_quantity
+                      )}
+                      ${escapeHtml(
+                        item.unit ||
+                        'units'
+                      )}
+                    </td>
+
+                    <td>
+                      ${adminFormatNumber(
+                        item.minimum_stock
+                      )}
+                    </td>
+
+                    <td>
+                      ${adminStatusPill(
+                        item.status
+                      )}
+                    </td>
+
+                  </tr>
+
+                `
+              )
+              .join('')}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+
+    <section class="dwit-admin-panel">
+
+      <div class="dwit-admin-panel-heading">
+
+        <div>
+          <h2>
+            Diagnostic Availability
+          </h2>
+
+          <p>
+            Facility-level service readiness
+          </p>
+        </div>
+
+      </div>
+
+
+      <div class="dwit-admin-diagnostic-grid">
+
+        ${(data.diagnostics || [])
+          .map(
+            item => `
+
+              <div class="dwit-admin-diagnostic-card">
+
+                <strong>
+                  ${escapeHtml(
+                    item.test_name
+                  )}
+                </strong>
+
+                <span>
+                  ${escapeHtml(
+                    item.facility_name ||
+                    item.facility_id
+                  )}
+                </span>
+
+                ${adminStatusPill(
+                  item.status
+                )}
+
+              </div>
+
+            `
+          )
+          .join('')}
+
+      </div>
+
+    </section>
+
+  `
+
+}
+
+
+function renderAdminInventoryPreview(
+  inventory
+) {
+
+  const relevant =
+    inventory
+      .filter(
+        item =>
+          item.status !==
+          'Available'
+      )
+      .slice(
+        0,
+        4
+      )
+
+
+  if (!relevant.length) {
+
+    return `
+      <div class="dwit-admin-mini-empty">
+        ✓ No low-stock or out-of-stock items.
+      </div>
+    `
+
+  }
+
+
+  return `
+
+    <div class="dwit-admin-mini-list">
+
+      ${relevant
+        .map(
+          item => `
+
+            <div class="dwit-admin-mini-row">
+
+              <div>
+
+                <strong>
+                  ${escapeHtml(
+                    item.medicine_name
+                  )}
+                </strong>
+
+                <span>
+                  ${escapeHtml(
+                    item.facility_name ||
+                    item.facility_id
+                  )} ·
+                  ${adminFormatNumber(
+                    item.stock_quantity
+                  )} ${escapeHtml(
+                    item.unit ||
+                    'units'
+                  )}
+                </span>
+
+              </div>
+
+              ${adminStatusPill(
+                item.status
+              )}
+
+            </div>
+
+          `
+        )
+        .join('')}
+
+    </div>
+
+  `
+}
+
+
+function renderAdminStaff(
+  data
+) {
+
+  const users =
+    data.users || []
+
+
+  return `
+
+    <section class="dwit-admin-panel">
+
+      <div class="dwit-admin-panel-heading">
+
+        <div>
+          <h2>
+            Authorized Staff
+          </h2>
+
+          <p>
+            Role and PHC assignment overview
+          </p>
+        </div>
+
+      </div>
+
+
+      <div class="dwit-admin-table-wrap">
+
+        <table class="dwit-admin-table">
+
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Name</th>
+              <th>Role</th>
+              <th>PHC / Facility</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+            ${users
+              .map(
+                user => `
+
+                  <tr>
+
+                    <td>
+                      <strong>
+                        ${escapeHtml(
+                          user.user_id
+                        )}
+                      </strong>
+                    </td>
+
+                    <td>
+                      ${escapeHtml(
+                        user.name
+                      )}
+                    </td>
+
+                    <td>
+                      ${escapeHtml(
+                        user.role
+                      )}
+                    </td>
+
+                    <td>
+                      ${escapeHtml(
+                        user.facility_name ||
+                        'System-wide'
+                      )}
+                    </td>
+
+                    <td>
+                      ${adminStatusPill(
+                        user.active
+                          ? 'Active'
+                          : 'Inactive'
+                      )}
+                    </td>
+
+                  </tr>
+
+                `
+              )
+              .join('')}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+
+      <div class="dwit-admin-role-matrix">
+
+        <div class="dwit-admin-panel-heading">
+
+          <div>
+            <h2>
+              Access Policy
+            </h2>
+
+            <p>
+              Demonstration of DWIT role boundaries
+            </p>
+          </div>
+
+        </div>
+
+
+        <div class="dwit-admin-access-grid">
+
+          ${renderAdminAccessCard(
+            'Administrator',
+            'System-wide',
+            [
+              'Manage users and PHCs',
+              'View network analytics',
+              'Monitor inventory',
+              'Review referrals',
+              'System operations'
+            ]
+          )}
+
+          ${renderAdminAccessCard(
+            'Medical Officer',
+            'Assigned PHC',
+            [
+              'Assigned patient records',
+              'Appointments',
+              'Clinical workflow',
+              'Referrals',
+              'Maternal & child care'
+            ]
+          )}
+
+          ${renderAdminAccessCard(
+            'ASHA Worker',
+            'Assigned PHC',
+            [
+              'Assigned patient list',
+              'Home visits',
+              'Maternal care',
+              'Referrals',
+              'Offline sync'
+            ]
+          )}
+
+        </div>
+
+      </div>
+
+    </section>
+
+  `
+}
+
+
+function renderAdminAccessCard(
+  title,
+  scope,
+  permissions
+) {
+
+  return `
+
+    <div class="dwit-admin-access-card">
+
+      <strong>
+        ${escapeHtml(
+          title
+        )}
+      </strong>
+
+      <span>
+        ${escapeHtml(
+          scope
+        )}
+      </span>
+
+      <ul>
+
+        ${permissions
+          .map(
+            item => `
+              <li>
+                ✓ ${escapeHtml(
+                  item
+                )}
+              </li>
+            `
+          )
+          .join('')}
+
+      </ul>
+
+    </div>
+
+  `
+}
+
+
+function renderAdminReferrals(
+  data
+) {
+
+  const referrals =
+    data.referrals || []
+
+
+  return `
+
+    <section class="dwit-admin-panel">
+
+      <div class="dwit-admin-panel-heading">
+
+        <div>
+          <h2>
+            Referral Queue
+          </h2>
+
+          <p>
+            ${adminFormatNumber(
+              referrals.length
+            )} referrals in the current dataset
+          </p>
+        </div>
+
+      </div>
+
+
+      <div class="dwit-admin-table-wrap">
+
+        <table class="dwit-admin-table">
+
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Patient</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Priority</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+            ${referrals
+              .map(
+                referral => `
+
+                  <tr>
+
+                    <td>
+                      #${escapeHtml(
+                        referral.id
+                      )}
+                    </td>
+
+                    <td>
+                      ${escapeHtml(
+                        referral.patient_id
+                      )}
+                    </td>
+
+                    <td>
+                      ${escapeHtml(
+                        referral.from_facility_name ||
+                        referral.referred_by ||
+                        '—'
+                      )}
+                    </td>
+
+                    <td>
+                      ${escapeHtml(
+                        referral.to_facility_name ||
+                        referral.referred_to ||
+                        '—'
+                      )}
+                    </td>
+
+                    <td>
+                      ${adminStatusPill(
+                        referral.priority ||
+                        'Normal'
+                      )}
+                    </td>
+
+                    <td>
+                      ${adminStatusPill(
+                        referral.status ||
+                        'Pending'
+                      )}
+                    </td>
+
+                  </tr>
+
+                `
+              )
+              .join('')}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+  `
+
+}
+
+
+function renderAdminAI(
+  data
+) {
+
+  const insights =
+    data.ai_insights || []
+
+
+  return `
+
+    <div class="dwit-admin-layout-2">
+
+      <section class="dwit-admin-panel">
+
+        <div class="dwit-admin-panel-heading">
+
+          <div>
+            <h2>
+              ✦ DWIT AI System Copilot
+            </h2>
+
+            <p>
+              AI-assisted operational interpretation
+            </p>
+          </div>
+
+          <span class="dwit-admin-ai-tag">
+            AI
+          </span>
+
+        </div>
+
+
+        <div class="dwit-admin-ai-hero">
+
+          <div class="dwit-admin-ai-orb">
+            ✦
+          </div>
+
+          <div>
+
+            <strong>
+              Network attention summary
+            </strong>
+
+            <span>
+              The AI layer reviews non-clinical
+              operational signals such as PHC load,
+              referrals and inventory.
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="dwit-admin-ai-list">
+
+          ${renderAdminAIInsightList(
+            insights,
+            true
+          )}
+
+        </div>
+
+      </section>
+
+
+      <section class="dwit-admin-panel">
+
+        <div class="dwit-admin-panel-heading">
+
+          <div>
+            <h2>
+              AI Actions
+            </h2>
+
+            <p>
+              Demo-safe operational assistance
+            </p>
+
+          </div>
+
+        </div>
+
+
+        <button
+          type="button"
+          class="dwit-admin-ai-action"
+          data-admin-ai-action="report"
+        >
+          <strong>
+            Generate network report
+          </strong>
+          <span>
+            Summarize PHC workload,
+            referrals and inventory.
+          </span>
+        </button>
+
+
+        <button
+          type="button"
+          class="dwit-admin-ai-action"
+          data-admin-ai-action="inventory"
+        >
+          <strong>
+            Explain inventory alert
+          </strong>
+          <span>
+            Review the current stock attention queue.
+          </span>
+        </button>
+
+
+        <button
+          type="button"
+          class="dwit-admin-ai-action"
+          data-admin-ai-action="referrals"
+        >
+          <strong>
+            Explain referral queue
+          </strong>
+          <span>
+            Review pending cross-facility coordination.
+          </span>
+        </button>
+
+      </section>
+
+    </div>
+
+  `
+
+}
+
+
+function renderAdminAIInsightList(
+  insights,
+  detailed = false
+) {
+
+  if (!insights.length) {
+
+    return `
+      <div class="dwit-admin-mini-empty">
+        ✓ No operational alerts detected.
+      </div>
+    `
+
+  }
+
+
+  return insights
+    .slice(
+      0,
+      detailed
+        ? 10
+        : 5
+    )
+    .map(
+      insight => `
+
+        <div class="dwit-admin-ai-insight">
+
+          <span
+            class="
+              dwit-admin-insight-dot
+              dwit-admin-insight-${escapeHtml(
+                insight.level ||
+                'info'
+              )}
+            "
+          ></span>
+
+          <div>
+
+            <strong>
+              ${escapeHtml(
+                insight.title
+              )}
+            </strong>
+
+            <span>
+              ${escapeHtml(
+                insight.message
+              )}
+            </span>
+
+          </div>
+
+        </div>
+
+      `
+    )
+    .join('')
+
+}
+
+
+function renderAdminAudit(
+  data
+) {
+
+  return `
+
+    <section class="dwit-admin-panel">
+
+      <div class="dwit-admin-panel-heading">
+
+        <div>
+          <h2>
+            Recent Activity
+          </h2>
+
+          <p>
+            ${adminFormatNumber(
+              (data.activity || []).length
+            )} recent system events
+          </p>
+        </div>
+
+      </div>
+
+
+      ${renderAdminActivityRows(
+        data.activity || [],
+        true
+      )}
+
+    </section>
+
+  `
+
+}
+
+
+function renderAdminActivityRows(
+  activity,
+  detailed = false
+) {
+
+  if (!activity.length) {
+
+    return `
+      <div class="dwit-admin-empty">
+        No activity found.
+      </div>
+    `
+
+  }
+
+
+  return `
+
+    <div class="dwit-admin-activity-list">
+
+      ${activity
+        .slice(
+          0,
+          detailed
+            ? 20
+            : 8
+        )
+        .map(
+          event => `
+
+            <div class="dwit-admin-activity-row">
+
+              <div class="dwit-admin-activity-icon">
+                ${escapeHtml(
+                  event.icon ||
+                  '•'
+                )}
+              </div>
+
+              <div>
+
+                <strong>
+                  ${escapeHtml(
+                    event.text ||
+                    'System activity'
+                  )}
+                </strong>
+
+                <span>
+                  ${escapeHtml(
+                    event.actor ||
+                    'System'
+                  )}
+                </span>
+
+              </div>
+
+              <time>
+                ${escapeHtml(
+                  prettyDate(
+                    event.created_at
+                  )
+                )}
+              </time>
+
+            </div>
+
+          `
+        )
+        .join('')}
+
+    </div>
+
+  `
+
+}
+
+
+function renderAdminSystem(
+  data
+) {
+
+  const system =
+    data.system || {}
+
+
+  return `
+
+    <div class="dwit-admin-layout-2">
+
+      <section class="dwit-admin-panel">
+
+        <div class="dwit-admin-panel-heading">
+
+          <div>
+            <h2>
+              System Health
+            </h2>
+
+            <p>
+              Core services
+            </p>
+          </div>
+
+        </div>
+
+
+        <div class="dwit-admin-health-grid">
+
+          ${adminHealthCard(
+            'API',
+            system.api_status ||
+            'Operational'
+          )}
+
+          ${adminHealthCard(
+            'Database',
+            system.database_status ||
+            'Connected'
+          )}
+
+          ${adminHealthCard(
+            'Frontend',
+            system.frontend_status ||
+            'Online'
+          )}
+
+          ${adminHealthCard(
+            'Authentication',
+            system.auth_status ||
+            'Operational'
+          )}
+
+          ${adminHealthCard(
+            'PHC Connectivity',
+            `${system.phc_online || 0} / ${system.phc_total || 0} Online`
+          )}
+
+          ${adminHealthCard(
+            'Last Refresh',
+            prettyDate(
+              system.generated_at
+            )
+          )}
+
+        </div>
+
+      </section>
+
+
+      <section class="dwit-admin-panel">
+
+        <div class="dwit-admin-panel-heading">
+
+          <div>
+            <h2>
+              Access Architecture
+            </h2>
+
+            <p>
+              How DWIT separates system and PHC scope
+            </p>
+          </div>
+
+        </div>
+
+
+        <div class="dwit-admin-architecture">
+
+          <div>
+            <strong>
+              Admin
+            </strong>
+            <span>
+              ALL PHCs
+            </span>
+          </div>
+
+          <div class="dwit-admin-architecture-arrow">
+            ↓
+          </div>
+
+          <div>
+            <strong>
+              PHC
+            </strong>
+            <span>
+              Facility Scope
+            </span>
+          </div>
+
+          <div class="dwit-admin-architecture-arrow">
+            ↓
+          </div>
+
+          <div>
+            <strong>
+              Doctor / ASHA
+            </strong>
+            <span>
+              Assigned Patients
+            </span>
+          </div>
+
+        </div>
+
+      </section>
+
+    </div>
+
+  `
+
+}
+
+
+function adminHealthCard(
+  label,
+  value
+) {
+
+  return `
+
+    <div class="dwit-admin-health-card">
+
+      <div>
+        <span></span>
+        <strong>
+          ${escapeHtml(
+            label
+          )}
+        </strong>
+      </div>
+
+      <b>
+        ${escapeHtml(
+          value
+        )}
+      </b>
+
+    </div>
+
+  `
+
+}
+
+
+/* =========================================================
+   ADMIN UI INTERACTIONS
+========================================================= */
+
+document.addEventListener(
+  'click',
+  event => {
+
+    const tabShortcut =
+      event.target.closest?.(
+        '[data-admin-tab-shortcut]'
+      )
+
+    if (tabShortcut) {
+
+      adminSelectedTab =
+        tabShortcut.dataset.adminTabShortcut
+
+      renderAdminView()
+
+      return
+
+    }
+
+
+    const aiOpen =
+      event.target.closest?.(
+        '[data-admin-ai="open"]'
+      )
+
+    if (aiOpen) {
+
+      adminSelectedTab =
+        'ai'
+
+      renderAdminView()
+
+      return
+
+    }
+
+
+    const demoAction =
+      event.target.closest?.(
+        '[data-admin-demo-action]'
+      )
+
+    if (demoAction) {
+
+      const action =
+        demoAction.dataset.adminDemoAction
+
+      if (
+        action ===
+        'transfer'
+      ) {
+
+        alert(
+          'Inventory transfer workflow selected.\\n\\nChoose source PHC, destination PHC and quantity in the next workflow step.'
+        )
+
+      }
+
+      return
+
+    }
+
+
+    const aiAction =
+      event.target.closest?.(
+        '[data-admin-ai-action]'
+      )
+
+    if (aiAction) {
+
+      const action =
+        aiAction.dataset.adminAiAction
+
+      const summary =
+        adminOverviewCache?.summary ||
+        {}
+
+      const phcs =
+        adminOverviewCache?.phcs ||
+        []
+
+      if (
+        action ===
+        'report'
+      ) {
+
+        alert(
+          [
+            'DWIT AI NETWORK REPORT',
+            '',
+            `Patients: ${adminFormatNumber(
+              summary.total_patients
+            )}`,
+            `Active pregnancies: ${adminFormatNumber(
+              summary.active_pregnancies
+            )}`,
+            `Children 0–6: ${adminFormatNumber(
+              summary.children_0_6
+            )}`,
+            `Pending referrals: ${adminFormatNumber(
+              summary.pending_referrals
+            )}`,
+            `PHCs tracked: ${adminFormatNumber(
+              phcs.length
+            )}`,
+            '',
+            'This is operational decision support, not a medical diagnosis.'
+          ].join(
+            '\\n'
+          )
+        )
+
+      }
+
+      if (
+        action ===
+        'inventory'
+      ) {
+
+        const alerts =
+          (
+            adminOverviewCache?.inventory ||
+            []
+          )
+            .filter(
+              item =>
+                item.status !==
+                'Available'
+            )
+            .map(
+              item =>
+                `${item.medicine_name} · ${item.facility_name} · ${item.status}`
+            )
+
+        alert(
+          [
+            'DWIT AI INVENTORY EXPLANATION',
+            '',
+            alerts.length
+              ? alerts.join(
+                  '\\n'
+                )
+              : 'No inventory alerts.'
+          ].join(
+            '\\n'
+          )
+        )
+
+      }
+
+      if (
+        action ===
+        'referrals'
+      ) {
+
+        alert(
+          [
+            'DWIT AI REFERRAL EXPLANATION',
+            '',
+            `${adminFormatNumber(
+              summary.pending_referrals
+            )} referrals are currently pending.`,
+            'Review the queue and coordinate the next workflow step.'
+          ].join(
+            '\\n'
+          )
+        )
+
+      }
+
+      return
+
+    }
+
+
+  }
+)
+
+
 /* =========================================================
    START APP
 ========================================================= */
 
 renderLogin()
+
+document.addEventListener(
+  'change',
+  event => {
+
+    const phcSelector =
+      event.target.closest?.(
+        '#adminPhcSelector'
+      )
+
+    if (!phcSelector) {
+      return
+    }
+
+    const selected =
+      phcSelector.value
+
+    const phcs =
+      adminOverviewCache?.phcs ||
+      []
+
+    const target =
+      phcs.find(
+        phc =>
+          phc.id === selected
+      ) ||
+      phcs[0]
+
+    const detail =
+      document.querySelector(
+        '#adminSelectedPhcStats'
+      )
+
+    if (detail) {
+
+      detail.innerHTML =
+        selected === 'all'
+          ? renderAdminPhcDetail(
+              phcs[0]
+            )
+          : renderAdminPhcDetail(
+              target
+            )
+
+    }
+
+  }
+)
+
