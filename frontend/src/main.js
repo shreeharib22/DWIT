@@ -5270,13 +5270,191 @@ async function openMaternalChildCareCenter() {
         pregnancies[0] ||
         null
 
-      content.innerHTML =
-        renderMaternalPatientOverview(
-          patientId,
-          activePregnancy,
-          pregnancies,
-          children
-        )
+let ancMilestones = []
+
+if (activePregnancy?.id) {
+  const ancResult =
+    await apiRequest(
+      `/maternal/pregnancies/${encodeURIComponent(
+        activePregnancy.id
+      )}/anc?actor_id=${encodeURIComponent(
+        getCurrentActorId()
+      )}`
+    )
+
+  ancMilestones =
+    ancResult?.visits ||
+    ancResult?.anc_visits ||
+    []
+}
+
+const [
+  homeResult,
+  maternalVaccineResult,
+  labResult,
+  deliveryResult,
+  postnatalResult,
+  familyResult,
+  schemeResult,
+  childHealthResults,
+  childVaccineResults
+] = await Promise.all([
+  activePregnancy?.id
+    ? apiRequest(
+        `/maternal/pregnancies/${encodeURIComponent(
+          activePregnancy.id
+        )}/asha-home-visits?actor_id=${encodeURIComponent(
+          getCurrentActorId()
+        )}`
+      ).catch(() => null)
+    : null,
+
+  activePregnancy?.id
+    ? apiRequest(
+        `/maternal/pregnancies/${encodeURIComponent(
+          activePregnancy.id
+        )}/vaccinations?actor_id=${encodeURIComponent(
+          getCurrentActorId()
+        )}`
+      ).catch(() => null)
+    : null,
+
+  activePregnancy?.id
+    ? apiRequest(
+        `/maternal/pregnancies/${encodeURIComponent(
+          activePregnancy.id
+        )}/labs?actor_id=${encodeURIComponent(
+          getCurrentActorId()
+        )}`
+      ).catch(() => null)
+    : null,
+
+  activePregnancy?.id
+    ? apiRequest(
+        `/maternal/pregnancies/${encodeURIComponent(
+          activePregnancy.id
+        )}/delivery?actor_id=${encodeURIComponent(
+          getCurrentActorId()
+        )}`
+      ).catch(() => null)
+    : null,
+
+  activePregnancy?.id
+    ? apiRequest(
+        `/maternal/pregnancies/${encodeURIComponent(
+          activePregnancy.id
+        )}/postnatal?actor_id=${encodeURIComponent(
+          getCurrentActorId()
+        )}`
+      ).catch(() => null)
+    : null,
+
+  apiRequest(
+    `/maternal/patients/${encodeURIComponent(
+      patientId
+    )}/family-planning?actor_id=${encodeURIComponent(
+      getCurrentActorId()
+    )}`
+  ).catch(() => null),
+
+  apiRequest(
+    `/maternal/patients/${encodeURIComponent(
+      patientId
+    )}/schemes?actor_id=${encodeURIComponent(
+      getCurrentActorId()
+    )}`
+  ).catch(() => null),
+
+  Promise.all(
+    children.map(
+      child =>
+        apiRequest(
+          `/maternal/children/${encodeURIComponent(
+            child.child_id
+          )}/health-visits?actor_id=${encodeURIComponent(
+            getCurrentActorId()
+          )}`
+        ).catch(() => null)
+    )
+  ),
+
+  Promise.all(
+    children.map(
+      child =>
+        apiRequest(
+          `/maternal/children/${encodeURIComponent(
+            child.child_id
+          )}/immunizations?actor_id=${encodeURIComponent(
+            getCurrentActorId()
+          )}`
+        ).catch(() => null)
+    )
+  )
+])
+
+const careData = {
+  homeSummary:
+    homeResult?.summary || {
+      total: 0,
+      completed: 0,
+      scheduled: 0,
+      missed: 0
+    },
+
+  maternalVaccineSummary:
+    maternalVaccineResult?.summary || {
+      total: 0,
+      completed: 0,
+      pending: 0,
+      missed: 0
+    },
+
+  labs:
+    labResult?.labs || [],
+
+  delivery:
+    deliveryResult?.delivery || null,
+
+  postnatalVisits:
+    postnatalResult?.visits || [],
+
+  postnatalSummary:
+    postnatalResult?.summary || {},
+
+  familyRecords:
+    familyResult?.records || [],
+
+  schemeSummary:
+    schemeResult?.summary || {
+      total: 0,
+      eligible: 0,
+      applied: 0,
+      approved: 0,
+      benefit_received: 0,
+      needs_action: 0
+    },
+
+  childHealthResults:
+    Array.isArray(childHealthResults)
+      ? childHealthResults
+      : [],
+
+  childVaccineResults:
+    Array.isArray(childVaccineResults)
+      ? childVaccineResults
+      : []
+}
+
+
+     content.innerHTML =
+  renderMaternalPatientOverview(
+    patientId,
+    activePregnancy,
+    pregnancies,
+    children,
+    ancMilestones,
+    careData
+  )
 
       wireMaternalPatientActions(
         patientId
@@ -5313,20 +5491,1259 @@ async function openMaternalChildCareCenter() {
     }
   }
 
-  function renderMaternalPatientOverview(
-    patientId,
-    activePregnancy,
-    pregnancies,
-    children
+function renderMaternalJourneyGraphic(
+  pregnancy,
+  ancMilestones = [],
+  children = []
+) {
+  const ancList =
+    Array.isArray(ancMilestones)
+      ? ancMilestones
+      : []
+
+ const completedANC =
+  Math.min(
+    ancList.filter(
+      item => item.status === 'Completed'
+    ).length,
+    4
+  )
+
+  const hasPregnancy =
+    Boolean(pregnancy)
+
+  const hasChildren =
+    Array.isArray(children) &&
+    children.length > 0
+
+  const steps = [
+    {
+      label: 'Pregnancy',
+      icon: '🤰',
+      state: hasPregnancy
+        ? 'is-complete'
+        : 'is-due'
+    },
+    {
+      label: 'ANC 1',
+      icon: '1',
+      state:
+        completedANC >= 1
+          ? 'is-complete'
+          : hasPregnancy
+          ? 'is-due'
+          : 'is-upcoming'
+    },
+    {
+      label: 'ANC 2',
+      icon: '2',
+      state:
+        completedANC >= 2
+          ? 'is-complete'
+          : completedANC === 1
+          ? 'is-due'
+          : 'is-upcoming'
+    },
+    {
+      label: 'ANC 3',
+      icon: '3',
+      state:
+        completedANC >= 3
+          ? 'is-complete'
+          : completedANC === 2
+          ? 'is-due'
+          : 'is-upcoming'
+    },
+    {
+      label: 'ANC 4',
+      icon: '4',
+      state:
+        completedANC >= 4
+          ? 'is-complete'
+          : completedANC === 3
+          ? 'is-due'
+          : 'is-upcoming'
+    },
+    {
+      label: 'Delivery',
+      icon: '🏥',
+      state: 'is-upcoming'
+    },
+    {
+      label: 'Postnatal',
+      icon: '❤️',
+      state: 'is-upcoming'
+    },
+    {
+      label: 'Child 0–6',
+      icon: '👶',
+      state: hasChildren
+        ? 'is-complete'
+        : 'is-upcoming'
+    }
+  ]
+
+  const progress =
+    hasPregnancy
+      ? Math.round(
+          ((1 + completedANC) / 5) * 100
+        )
+      : 0
+
+  return `
+    <section class="maternal-journey-graphic">
+
+      <div class="maternal-graphic-header">
+
+        <div>
+          <div class="dashboard-kicker">
+            CARE PATHWAY
+          </div>
+
+          <h3>
+            MATERNAL CARE JOURNEY
+          </h3>
+
+          <p>
+            Pregnancy → ANC → Delivery →
+            Postnatal → Child 0–6
+          </p>
+        </div>
+
+        <div class="maternal-graphic-stats">
+
+          <div>
+            <strong>
+              ${hasPregnancy ? 'Active' : '—'}
+            </strong>
+            <span>Pregnancy</span>
+          </div>
+
+          <div>
+            <strong>
+              ${completedANC}/4
+            </strong>
+            <span>ANC Completed</span>
+          </div>
+
+          <div>
+            <strong>
+              ${hasChildren ? children.length : 0}
+            </strong>
+            <span>Children</span>
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="maternal-progress-bar">
+
+        <div
+          class="maternal-progress-fill"
+          style="width: ${progress}%"
+        ></div>
+
+      </div>
+
+      <div class="maternal-stepper">
+
+        ${steps
+          .map(
+            (step, index) => `
+              <div class="maternal-step ${step.state}">
+
+                <div class="maternal-step-icon">
+                  ${step.icon}
+                </div>
+
+                <strong>
+                  ${step.label}
+                </strong>
+
+              </div>
+
+              ${
+                index < steps.length - 1
+                  ? `
+                    <div class="maternal-step-connector"></div>
+                  `
+                  : ''
+              }
+            `
+          )
+          .join('')}
+
+      </div>
+
+      <div class="maternal-anc-cards">
+
+        ${[
+          ['ANC 1', '<12 weeks'],
+          ['ANC 2', '14–26 weeks'],
+          ['ANC 3', '28–34 weeks'],
+          ['ANC 4', '36 weeks–delivery']
+        ]
+          .map(
+            ([title, window], index) => {
+              const complete =
+                completedANC >= index + 1
+
+              const due =
+                !complete &&
+                completedANC === index
+
+              const state =
+                complete
+                  ? 'is-complete'
+                  : due
+                  ? 'is-due'
+                  : 'is-upcoming'
+
+              return `
+                <div
+                  class="maternal-anc-card ${state}"
+                >
+
+                  <div>
+                    <strong>
+                      ${title}
+                    </strong>
+
+                    <span>
+                      ${window}
+                    </span>
+                  </div>
+
+                  <b>
+                    ${
+                      complete
+                        ? '✓'
+                        : due
+                        ? 'DUE'
+                        : '○'
+                    }
+                  </b>
+
+                </div>
+              `
+            }
+          )
+          .join('')}
+
+      </div>
+
+    </section>
+  `
+}
+
+function renderMaternalVisualDashboard(
+  pregnancy,
+  ancMilestones = [],
+  children = [],
+  careData = {}
+) {
+  const ancList =
+    Array.isArray(ancMilestones)
+      ? ancMilestones
+      : []
+
+  const homeSummary =
+    careData.homeSummary || {}
+
+  const vaccineSummary =
+    careData.maternalVaccineSummary || {}
+
+  const labs =
+    Array.isArray(careData.labs)
+      ? careData.labs
+      : []
+
+  const postnatalVisits =
+    Array.isArray(careData.postnatalVisits)
+      ? careData.postnatalVisits
+      : []
+
+  const familyRecords =
+    Array.isArray(careData.familyRecords)
+      ? careData.familyRecords
+      : []
+
+  const schemeSummary =
+    careData.schemeSummary || {}
+
+  const childHealthResults =
+    Array.isArray(careData.childHealthResults)
+      ? careData.childHealthResults
+      : []
+
+  const childVaccineResults =
+    Array.isArray(careData.childVaccineResults)
+      ? careData.childVaccineResults
+      : []
+
+  const completedANC =
+    ancList.filter(
+      item => item.status === 'Completed'
+    ).length
+
+  const completedHome =
+    Number(homeSummary.completed || 0)
+
+  const missedHome =
+    Number(homeSummary.missed || 0)
+
+  const completedMaternalVaccines =
+    Number(vaccineSummary.completed || 0)
+
+  const maternalVaccinesTotal =
+    Number(vaccineSummary.total || 0)
+
+  const completedPostnatal =
+    Number(
+      careData.postnatalSummary?.completed ||
+      postnatalVisits.length ||
+      0
+    )
+
+  const deliveryRecorded =
+    Boolean(careData.delivery)
+
+  const childrenCount =
+    children.length
+
+  const childHealthVisits =
+    childHealthResults.flatMap(
+      result =>
+        Array.isArray(result?.visits)
+          ? result.visits
+          : []
+    )
+
+  const childVaccineSummaries =
+    childVaccineResults.map(
+      result =>
+        result?.summary || {}
+    )
+
+  const childVaccinesTotal =
+    childVaccineSummaries.reduce(
+      (total, summary) =>
+        total +
+        Number(summary.total || 0),
+      0
+    )
+
+  const childVaccinesCompleted =
+    childVaccineSummaries.reduce(
+      (total, summary) =>
+        total +
+        Number(summary.completed || 0),
+      0
+    )
+
+  const referralAlerts = []
+
+  if (
+    pregnancy?.risk_status &&
+    pregnancy.risk_status !== 'Low Risk'
   ) {
+    referralAlerts.push(
+      `Pregnancy risk: ${pregnancy.risk_status}`
+    )
+  }
+
+  ancList.forEach(
+    milestone => {
+      if (milestone.visit?.high_risk) {
+        referralAlerts.push(
+          `ANC ${milestone.visit_number}: high-risk flag`
+        )
+      }
+
+      if (milestone.visit?.referral_required) {
+        referralAlerts.push(
+          `ANC ${milestone.visit_number}: referral required`
+        )
+      }
+    }
+  )
+
+  if (missedHome > 0) {
+    referralAlerts.push(
+      `${missedHome} ASHA home visit(s) marked missed`
+    )
+  }
+
+  if (
+    careData.delivery?.referral_required
+  ) {
+    referralAlerts.push(
+      'Delivery record requires referral'
+    )
+  }
+
+  if (
+    careData.delivery?.complications
+  ) {
+    referralAlerts.push(
+      'Delivery complications recorded'
+    )
+  }
+
+  childHealthVisits.forEach(
+    visit => {
+      if (visit.referral_required) {
+        referralAlerts.push(
+          'Child health visit has referral flag'
+        )
+      }
+    }
+  )
+
+  const weightPoints =
+    ancList
+      .filter(
+        item =>
+          item.visit?.weight !== undefined &&
+          item.visit?.weight !== null &&
+          item.visit?.weight !== ''
+      )
+      .map(
+        item => ({
+          date:
+            item.visit.visit_date ||
+            `ANC ${item.visit_number}`,
+          value:
+            Number(item.visit.weight)
+        })
+      )
+      .filter(
+        point =>
+          Number.isFinite(point.value)
+      )
+
+  const haemoglobinPoints =
+    ancList
+      .filter(
+        item =>
+          item.visit?.haemoglobin !== undefined &&
+          item.visit?.haemoglobin !== null &&
+          item.visit?.haemoglobin !== ''
+      )
+      .map(
+        item => ({
+          date:
+            item.visit.visit_date ||
+            `ANC ${item.visit_number}`,
+          value:
+            Number(item.visit.haemoglobin)
+        })
+      )
+      .filter(
+        point =>
+          Number.isFinite(point.value)
+      )
+
+  const renderMiniTrend = (
+    title,
+    unit,
+    points
+  ) => {
+    if (!points.length) {
+      return `
+        <div class="maternal-trend-card is-empty">
+          <div class="maternal-trend-title">
+            <strong>${title}</strong>
+            <span>No recorded data</span>
+          </div>
+
+          <div class="maternal-trend-empty">
+            Data will appear after measurements are recorded.
+          </div>
+        </div>
+      `
+    }
+
+    const values =
+      points.map(point => point.value)
+
+    const min =
+      Math.min(...values)
+
+    const max =
+      Math.max(...values)
+
+    const range =
+      max - min || 1
+
+    const width = 320
+    const height = 100
+    const padding = 12
+
+    const step =
+      points.length === 1
+        ? 0
+        : (width - padding * 2) /
+          (points.length - 1)
+
+    const svgPoints =
+      points
+        .map(
+          (point, index) => {
+            const x =
+              padding +
+              step * index
+
+            const y =
+              height -
+              padding -
+              (
+                (
+                  point.value - min
+                ) / range
+              ) *
+              (height - padding * 2)
+
+            return `${x},${y}`
+          }
+        )
+        .join(' ')
+
+    return `
+      <div class="maternal-trend-card">
+
+        <div class="maternal-trend-title">
+          <strong>${title}</strong>
+          <span>${unit}</span>
+        </div>
+
+        <div class="maternal-trend-chart">
+
+          <svg
+            viewBox="0 0 ${width} ${height}"
+            preserveAspectRatio="none"
+          >
+
+            <polyline
+              points="${svgPoints}"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+
+            ${
+              points
+                .map(
+                  (point, index) => {
+                    const x =
+                      padding +
+                      step * index
+
+                    const y =
+                      height -
+                      padding -
+                      (
+                        (
+                          point.value - min
+                        ) / range
+                      ) *
+                      (height - padding * 2)
+
+                    return `
+                      <circle
+                        cx="${x}"
+                        cy="${y}"
+                        r="4"
+                        fill="currentColor"
+                      />
+                    `
+                  }
+                )
+                .join('')
+            }
+
+          </svg>
+
+        </div>
+
+        <div class="maternal-trend-labels">
+
+          <span>
+            ${escapeHtml(
+              String(points[0].date)
+            )}
+          </span>
+
+          <strong>
+            ${escapeHtml(
+              String(
+                points[points.length - 1].value
+              )
+            )}
+          </strong>
+
+          <span>
+            ${escapeHtml(
+              String(
+                points[points.length - 1].date
+              )
+            )}
+          </span>
+
+        </div>
+
+      </div>
+    `
+  }
+
+  const recordCoverageItems = [
+    {
+      label: 'Pregnancy',
+      complete: Boolean(pregnancy)
+    },
+    {
+      label: 'ANC',
+      complete: completedANC === 4
+    },
+    {
+      label: 'ASHA',
+      complete: completedHome > 0
+    },
+    {
+      label: 'Vaccines',
+      complete:
+        maternalVaccinesTotal > 0 &&
+        completedMaternalVaccines ===
+          maternalVaccinesTotal
+    },
+    {
+      label: 'Delivery',
+      complete: deliveryRecorded
+    },
+    {
+      label: 'Postnatal',
+      complete: completedPostnatal > 0
+    },
+    {
+      label: 'Children',
+      complete: childrenCount > 0
+    },
+    {
+      label: 'Child Vaccines',
+      complete:
+        childVaccinesTotal > 0 &&
+        childVaccinesCompleted ===
+          childVaccinesTotal
+    }
+  ]
+
+  const coverageCompleted =
+    recordCoverageItems.filter(
+      item => item.complete
+    ).length
+
+  const coveragePercent =
+    Math.round(
+      (
+        coverageCompleted /
+        recordCoverageItems.length
+      ) * 100
+    )
+
+    const childVisualCards =
+  children.map(
+    (child, index) => {
+
+      const healthResult =
+        childHealthResults[index] || {}
+
+      const vaccineResult =
+        childVaccineResults[index] || {}
+
+      const healthVisits =
+        Array.isArray(
+          healthResult?.visits
+        )
+          ? healthResult.visits
+          : []
+
+      const vaccineSummary =
+        vaccineResult?.summary || {}
+
+      const vaccineTotal =
+        Number(
+          vaccineSummary.total || 0
+        )
+
+      const vaccineCompleted =
+        Number(
+          vaccineSummary.completed || 0
+        )
+
+      const vaccinePercent =
+        vaccineTotal > 0
+          ? Math.round(
+              (
+                vaccineCompleted /
+                vaccineTotal
+              ) * 100
+            )
+          : 0
+
+      const weightPoints =
+        healthVisits
+          .slice()
+          .reverse()
+          .filter(
+            visit =>
+              visit.weight !== undefined &&
+              visit.weight !== null &&
+              visit.weight !== ''
+          )
+          .map(
+            visit => Number(visit.weight)
+          )
+          .filter(
+            value =>
+              Number.isFinite(value)
+          )
+
+      const latestVisit =
+        healthVisits[0] || {}
+
+      return {
+        child,
+        healthVisits,
+        latestVisit,
+        vaccineTotal,
+        vaccineCompleted,
+        vaccinePercent,
+        weightPoints
+      }
+    }
+  )
+
+  return `
+   <section
+  class="maternal-visual-dashboard"
+  style="--maternal-coverage: ${coveragePercent}"
+>
+
+      <div class="maternal-dashboard-heading">
+
+        <div>
+          <div class="dashboard-kicker">
+            CARE OVERVIEW
+          </div>
+
+          <h3>
+            Mother & Child Health Dashboard
+          </h3>
+
+          <p>
+            A visual summary of recorded maternal
+            and child care information.
+          </p>
+        </div>
+
+        <div class="maternal-coverage-ring">
+          <div>
+            <strong>${coveragePercent}%</strong>
+            <span>Record coverage</span>
+          </div>
+        </div>
+
+      </div>
+
+
+      <div class="maternal-visual-stat-grid">
+
+        <div class="maternal-visual-stat">
+          <span>ANC</span>
+          <strong>${completedANC}/4</strong>
+          <small>Milestones</small>
+        </div>
+
+        <div class="maternal-visual-stat">
+          <span>ASHA Visits</span>
+          <strong>${completedHome}</strong>
+          <small>Completed</small>
+        </div>
+
+        <div class="maternal-visual-stat">
+          <span>Vaccines</span>
+          <strong>
+            ${completedMaternalVaccines}/${maternalVaccinesTotal}
+          </strong>
+          <small>Maternal</small>
+        </div>
+
+        <div class="maternal-visual-stat">
+          <span>Children</span>
+          <strong>${childrenCount}</strong>
+          <small>0–6 years</small>
+        </div>
+
+        <div class="maternal-visual-stat">
+          <span>Labs</span>
+          <strong>${labs.length}</strong>
+          <small>Reports</small>
+        </div>
+
+        <div class="maternal-visual-stat">
+          <span>Postnatal</span>
+          <strong>${completedPostnatal}</strong>
+          <small>Visits</small>
+        </div>
+
+      </div>
+
+
+      <div class="maternal-care-status-board">
+
+        <div class="maternal-care-status-main">
+
+          <div class="maternal-status-board-title">
+            Care pathway
+          </div>
+
+          <div class="maternal-status-path">
+
+            ${recordCoverageItems
+              .map(
+                item => `
+                  <div
+                    class="
+                      maternal-status-node
+                      ${
+                        item.complete
+                          ? 'is-complete'
+                          : 'is-pending'
+                      }
+                    "
+                  >
+                    <span>
+                      ${
+                        item.complete
+                          ? '✓'
+                          : '○'
+                      }
+                    </span>
+
+                    <strong>
+                      ${item.label}
+                    </strong>
+                  </div>
+                `
+              )
+              .join('')}
+
+          </div>
+
+        </div>
+
+
+        <div
+          class="
+            maternal-risk-board
+            ${
+              referralAlerts.length
+                ? 'has-alerts'
+                : ''
+            }
+          "
+        >
+
+          <div class="maternal-status-board-title">
+            Risk & alerts
+          </div>
+
+          ${
+            referralAlerts.length
+              ? `
+                <div class="maternal-alert-list">
+                  ${referralAlerts
+                    .slice(0, 5)
+                    .map(
+                      alert => `
+                        <div class="maternal-alert-item">
+                          <span>!</span>
+                          <strong>
+                            ${escapeHtml(alert)}
+                          </strong>
+                        </div>
+                      `
+                    )
+                    .join('')}
+                </div>
+              `
+              : `
+                <div class="maternal-alert-clear">
+                  ✓ No recorded alerts in the loaded records
+                </div>
+              `
+          }
+
+        </div>
+
+      </div>
+
+
+      <div class="maternal-trend-grid">
+
+        ${renderMiniTrend(
+          'Weight trend',
+          'Recorded weight',
+          weightPoints
+        )}
+
+        ${renderMiniTrend(
+          'Haemoglobin trend',
+          'Recorded Hb',
+          haemoglobinPoints
+        )}
+
+      </div>
+
+
+      <div class="maternal-secondary-visual-grid">
+
+        <div class="maternal-secondary-card">
+
+          <div class="maternal-secondary-icon">
+            🏠
+          </div>
+
+          <div>
+            <span>ASHA home visits</span>
+
+            <strong>
+              ${completedHome} completed
+            </strong>
+
+            <small>
+              ${missedHome} missed ·
+              ${Number(
+                homeSummary.scheduled || 0
+              )} scheduled
+            </small>
+          </div>
+
+        </div>
+
+
+        <div class="maternal-secondary-card">
+
+          <div class="maternal-secondary-icon">
+            💉
+          </div>
+
+          <div>
+            <span>Immunization</span>
+
+            <strong>
+              ${completedMaternalVaccines}
+              /${maternalVaccinesTotal}
+            </strong>
+
+            <small>
+              ${Number(
+                vaccineSummary.pending || 0
+              )} pending ·
+              ${Number(
+                vaccineSummary.missed || 0
+              )} missed
+            </small>
+          </div>
+
+        </div>
+
+
+        <div class="maternal-secondary-card">
+
+          <div class="maternal-secondary-icon">
+            🏥
+          </div>
+
+          <div>
+            <span>Delivery</span>
+
+            <strong>
+              ${
+                deliveryRecorded
+                  ? 'Recorded'
+                  : 'Not recorded'
+              }
+            </strong>
+
+            <small>
+              ${
+                careData.delivery?.delivery_date
+                  ? escapeHtml(
+                      careData.delivery.delivery_date
+                    )
+                  : 'Awaiting record'
+              }
+            </small>
+          </div>
+
+        </div>
+
+
+        <div class="maternal-secondary-card">
+
+          <div class="maternal-secondary-icon">
+            👶
+          </div>
+
+          <div>
+            <span>Children 0–6</span>
+
+            <strong>
+              ${childrenCount} linked
+            </strong>
+
+            <small>
+              ${
+                childHealthVisits.length
+              } health visits recorded
+            </small>
+          </div>
+
+        </div>
+
+
+        <div class="maternal-secondary-card">
+
+          <div class="maternal-secondary-icon">
+            📋
+          </div>
+
+          <div>
+            <span>Family planning</span>
+
+            <strong>
+              ${familyRecords.length}
+              record(s)
+            </strong>
+
+            <small>
+              ${
+                familyRecords.filter(
+                  item =>
+                    item.status ===
+                    'Follow-up Due'
+                ).length
+              } follow-up due
+            </small>
+          </div>
+
+        </div>
+
+
+        <div class="maternal-secondary-card">
+
+          <div class="maternal-secondary-icon">
+            🏛️
+          </div>
+
+          <div>
+            <span>Government schemes</span>
+
+            <strong>
+              ${Number(
+                schemeSummary.approved || 0
+              )} approved
+            </strong>
+
+            <small>
+              ${Number(
+                schemeSummary.needs_action || 0
+              )} needs action
+            </small>
+          </div>
+
+        </div>
+
+      </div>
+
+<div class="maternal-child-visual-section">
+
+  <div class="maternal-child-visual-heading">
+
+    <div>
+      <div class="dashboard-kicker">
+        CHILD HEALTH · 0–6 YEARS
+      </div>
+
+      <h4>
+        Growth & Vaccination Overview
+      </h4>
+
+      <p>
+        Visual snapshot of each linked child's
+        recorded health and immunization data.
+      </p>
+    </div>
+
+  </div>
+
+  ${
+    childVisualCards.length
+      ? `
+        <div class="maternal-child-visual-grid">
+
+          ${childVisualCards
+            .map(
+              item => `
+                <div class="maternal-child-visual-card">
+
+                  <div class="maternal-child-visual-top">
+
+                    <div class="maternal-child-avatar">
+                      👶
+                    </div>
+
+                    <div>
+                      <strong>
+                        ${escapeHtml(
+                          item.child.name ||
+                          'Child'
+                        )}
+                      </strong>
+
+                      <span>
+                        ${
+                          item.latestVisit
+                            ?.visit_date ||
+                          'No health visit recorded'
+                        }
+                      </span>
+                    </div>
+
+                  </div>
+
+
+                  <div class="maternal-child-metrics">
+
+                    <div>
+                      <span>Weight</span>
+                      <strong>
+                        ${
+                          item.latestVisit
+                            ?.weight ||
+                          '—'
+                        }
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>Height</span>
+                      <strong>
+                        ${
+                          item.latestVisit
+                            ?.height ||
+                          '—'
+                        }
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>Health Visits</span>
+                      <strong>
+                        ${item.healthVisits.length}
+                      </strong>
+                    </div>
+
+                  </div>
+
+
+                  <div class="maternal-child-vaccine-progress">
+
+                    <div class="maternal-child-progress-label">
+
+                      <span>
+                        Vaccination
+                      </span>
+
+                      <strong>
+                        ${item.vaccineCompleted}/${item.vaccineTotal}
+                      </strong>
+
+                    </div>
+
+                    <div class="maternal-child-progress-track">
+
+                      <div
+                        class="maternal-child-progress-fill"
+                        style="width: ${item.vaccinePercent}%"
+                      ></div>
+
+                    </div>
+
+                    <small>
+                      ${item.vaccinePercent}% recorded
+                    </small>
+
+                  </div>
+
+
+                  <div class="maternal-child-growth-badge">
+
+                    <span>
+                      Growth records
+                    </span>
+
+                    <strong>
+                      ${
+                        item.weightPoints.length
+                      }
+                    </strong>
+
+                  </div>
+
+                </div>
+              `
+            )
+            .join('')}
+
+        </div>
+      `
+      : `
+        <div class="maternal-child-visual-empty">
+          No children are linked to this maternal record yet.
+        </div>
+      `
+  }
+
+</div>
+
+
+    </section>
+  `
+}
+
+
+function renderMaternalPatientOverview(
+  patientId,
+  activePregnancy,
+  pregnancies,
+  children,
+  ancMilestones = [],
+  careData = {}
+) {
+
 
     const pregnancy =
       activePregnancy
-
-    const completedANC =
-      pregnancy
-        ? '0'
-        : '—'
+const completedANC = pregnancy
+  ? ancMilestones.filter(
+      item => item.status === 'Completed'
+    ).length
+  : '—'
 
     const pregnancyNumber =
       pregnancy?.pregnancy_number ||
@@ -5378,6 +6795,21 @@ async function openMaternalChildCareCenter() {
           </div>
 
         </div>
+ 
+        ${renderMaternalJourneyGraphic(
+          pregnancy,
+          ancMilestones,
+          children
+        )}
+
+
+        ${renderMaternalVisualDashboard(
+  pregnancy,
+  ancMilestones,
+  children,
+  careData
+)}
+
 
         ${
           pregnancy
