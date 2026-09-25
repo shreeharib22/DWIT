@@ -820,6 +820,50 @@ async function apiGet(path) {
   return apiRequest(path)
 }
 
+function addDwitLogoToDashboardHeaders() {
+
+  document
+    .querySelectorAll(
+      '.dashboard-header'
+    )
+    .forEach(
+      header => {
+
+        if (
+          header.querySelector(
+            '.dwit-dashboard-logo'
+          )
+        ) {
+          return
+        }
+
+        const logo =
+          document.createElement(
+            'img'
+          )
+
+        logo.className =
+          'dwit-dashboard-logo'
+
+        logo.src =
+          '/dwit-logo.png'
+
+        logo.alt =
+          'DWIT'
+
+        logo.loading =
+          'eager'
+
+        header.insertBefore(
+          logo,
+          header.firstElementChild
+        )
+
+      }
+    )
+}
+
+
 function attachLogout() {
 
   document
@@ -828,6 +872,8 @@ function attachLogout() {
       'click',
       logout
     )
+
+  addDwitLogoToDashboardHeaders()
 }
 
 function logout() {
@@ -869,10 +915,12 @@ function renderLogin() {
           <header class="brand-row">
 
             <div class="brand-lockup">
-
-              <div class="brand-mark">
-                <span>RH</span>
-              </div>
+<div class="brand-mark dwit-brand-mark">
+  <img
+    src="/dwit-logo.png"
+    alt="DWIT"
+  >
+</div>
 
               <div class="brand-text">
 
@@ -4952,6 +5000,12 @@ async function openMaternalChildCareCenter() {
     <div class="maternal-child-care-modal">
 
       <div class="maternal-care-header">
+
+<img
+  src="/dwit-logo.png"
+  alt="DWIT"
+  class="dwit-maternal-logo"
+>
 
         <div>
           <div class="dashboard-kicker">

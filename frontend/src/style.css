@@ -8220,3 +8220,83 @@ textarea.form-control {
   top: 0 !important;
   z-index: 10 !important;
 }
+
+/* =====================================================
+   DWIT LOGO SYSTEM
+   ===================================================== */
+
+.dwit-brand-mark {
+  width: 150px !important;
+  height: 58px !important;
+  min-width: 150px !important;
+  min-height: 58px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+  box-shadow: none !important;
+}
+
+.dwit-brand-mark img {
+  width: 150px;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
+
+
+/* Dashboard */
+
+.dwit-dashboard-logo {
+  width: 125px;
+  height: 55px;
+  flex: 0 0 auto;
+  display: block;
+  object-fit: contain;
+  margin-right: 18px;
+}
+
+
+/* Maternal & Child Care */
+
+.dwit-maternal-logo {
+  width: 145px;
+  height: 58px;
+  flex: 0 0 auto;
+  display: block;
+  object-fit: contain;
+  margin-right: 20px;
+}
+
+
+/* Mobile */
+
+@media (max-width: 768px) {
+
+  .dwit-brand-mark {
+    width: 120px !important;
+    height: 48px !important;
+    min-width: 120px !important;
+    min-height: 48px !important;
+  }
+
+  .dwit-brand-mark img {
+    width: 120px;
+  }
+
+  .dwit-dashboard-logo {
+    width: 95px;
+    height: 45px;
+    margin-right: 10px;
+  }
+
+  .dwit-maternal-logo {
+    width: 105px;
+    height: 45px;
+    margin-right: 10px;
+  }
+
+}

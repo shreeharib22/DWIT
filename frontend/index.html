@@ -2,22 +2,71 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DWIT — Don't Worry I'm There</title>
-    <link
-  rel="stylesheet"
-  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-/>
 
-<script
-  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- DWIT Browser Tab Icon -->
+    <link
+      rel="icon"
+      type="image/png"
+      href="/dwit-logo.png"
+    />
+
+    <!-- Mobile / Responsive -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+
+    <!-- SEO / Browser Metadata -->
+    <meta
+      name="description"
+      content="DWIT — Don't Worry I'm There. Digital healthcare coordination for patients, ASHA workers and doctors."
+    />
+
+    <!-- Browser Theme -->
+    <meta
+      name="theme-color"
+      content="#0b63ce"
+    />
+
+    <!-- Preload DWIT Logo -->
+    <link
+      rel="preload"
+      as="image"
+      href="/dwit-logo.png"
+    />
+
+    <title>
+      DWIT — Don't Worry I'm There
+    </title>
+
+    <!-- Leaflet CSS -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+
+    <!-- Leaflet JS -->
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    ></script>
+
+    <!-- QR Code -->
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
+    ></script>
+
+    <!-- HTML5 QR Scanner -->
+    <script
+      src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"
+    ></script>
   </head>
+
   <body>
     <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
+
+    <script
+      type="module"
+      src="/src/main.js"
+    ></script>
   </body>
 </html>
