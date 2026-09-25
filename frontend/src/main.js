@@ -8013,20 +8013,21 @@ const completedANC = pregnancy
                   }
 
                   try {
-
-                    const saved =
-                      await apiRequest(
-                        `/maternal/pregnancies/${encodeURIComponent(
-                          pregnancyId
-                        )}/anc`,
-                        {
-                          method: 'POST',
-                          body:
-                            JSON.stringify(
-                              payload
-                            )
-                        }
-                      )
+const saved =
+  await apiRequest(
+    `/maternal/pregnancies/${encodeURIComponent(
+      pregnancyId
+    )}/anc?actor_id=${encodeURIComponent(
+      getCurrentActorId()
+    )}`,
+    {
+      method: 'POST',
+      body:
+        JSON.stringify(
+          payload
+        )
+    }
+  )
 
                     if (
                       !saved ||
