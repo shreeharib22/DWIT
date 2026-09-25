@@ -6784,6 +6784,14 @@ const completedANC = pregnancy
 
           <div class="maternal-hero-actions">
 
+<button
+  type="button"
+  class="secondary-action"
+  id="maternalBackToSearchBtn"
+>
+  ← Back to Patient Search
+</button>
+
             <button
               type="button"
               class="secondary-action"
@@ -7747,6 +7755,12 @@ const completedANC = pregnancy
 
                 </div>
 
+<div
+  id="ancVisitFormMessage"
+  class="form-message"
+  role="alert"
+></div>
+
                 <div class="maternal-form-actions">
 
                   <button
@@ -7914,19 +7928,19 @@ const completedANC = pregnancy
                       'Save ANC visit:',
                       error
                     )
+const messageBox =
+  document.querySelector(
+    '#ancVisitFormMessage'
+  )
 
-                    alert(
-                      error?.message ||
-                      'Unable to save ANC visit.'
-                    )
+if (messageBox) {
+  messageBox.textContent =
+    error?.message ||
+    'Unable to save ANC visit.'
 
-                    if (saveButton) {
-                      saveButton.disabled =
-                        false
-                      saveButton.textContent =
-                        'Save ANC Visit'
-                    }
-
+  messageBox.className =
+    'form-message error'
+}
                   }
 
                 }
@@ -14517,6 +14531,67 @@ const completedANC = pregnancy
   function wireMaternalPatientActions(
     patientId
   ) {
+
+    document
+  .querySelector(
+    '#maternalBackToSearchBtn'
+  )
+  ?.addEventListener(
+    'click',
+    () => {
+
+      const content =
+        document.querySelector(
+          '#maternalCareContent'
+        )
+
+      const searchInput =
+        document.querySelector(
+          '#maternalPatientSearch'
+        )
+
+      const resultsBox =
+        document.querySelector(
+          '#maternalPatientResults'
+        )
+
+      if (content) {
+        content.innerHTML = `
+          <div class="maternal-care-empty">
+
+            <div class="maternal-care-empty-icon">
+              👩‍🍼
+            </div>
+
+            <h3>
+              Select a patient
+            </h3>
+
+            <p>
+              Search for a patient to open their
+              maternal and child care journey.
+            </p>
+
+          </div>
+        `
+      }
+
+      if (searchInput) {
+        searchInput.value = ''
+        searchInput.focus()
+      }
+
+      if (resultsBox) {
+        resultsBox.innerHTML = ''
+      }
+
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      })
+
+    }
+  )
 
     document
       .querySelector(

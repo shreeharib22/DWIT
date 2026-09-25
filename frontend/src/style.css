@@ -8111,3 +8111,57 @@ textarea.form-control {
   }
 
 }
+
+/* =====================================================
+   MATERNAL & CHILD CARE — FULL SCREEN MODE
+   ===================================================== */
+
+.maternal-child-care-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  z-index: 99999 !important;
+}
+
+.maternal-child-care-modal {
+  width: 100vw !important;
+  max-width: none !important;
+  height: 100vh !important;
+  max-height: none !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.maternal-care-header {
+  flex: 0 0 auto;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.maternal-care-search {
+  flex: 0 0 auto;
+}
+
+.maternal-patient-results {
+  flex: 0 0 auto;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.maternal-care-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 40px;
+}
