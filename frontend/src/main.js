@@ -5105,11 +5105,21 @@ async function openMaternalChildCareCenter() {
       const result =
         null
 
-      const patients =
-        filteredPatients(
-          query
-        ) ||
-        []
+     const patients =
+  (
+    filteredPatients(
+      query
+    ) || []
+  ).filter(
+    patient =>
+      ['female', 'f'].includes(
+        String(
+          patient.gender || ''
+        )
+          .trim()
+          .toLowerCase()
+      )
+  )
 
 
       if (!patients.length) {
@@ -5178,14 +5188,40 @@ async function openMaternalChildCareCenter() {
               'click',
               () => {
 
-                const patientId =
-                  button.dataset.patientId
+               const patientId =
+  button.dataset.patientId
 
-                if (patientId) {
-                  loadMaternalPatient(
-                    patientId
-                  )
-                }
+const selectedPatient =
+  patients.find(
+    patient =>
+      String(patient.patient_id) ===
+      String(patientId)
+  )
+
+const gender =
+  String(
+    selectedPatient?.gender || ''
+  )
+    .trim()
+    .toLowerCase()
+
+if (
+  !['female', 'f'].includes(gender)
+) {
+  resultsBox.innerHTML = `
+    <div class="maternal-search-message error">
+      Maternal & Child Care is available only
+      for patients with recorded gender as Female.
+    </div>
+  `
+  return
+}
+
+if (patientId) {
+  loadMaternalPatient(
+    patientId
+  )
+}
 
               }
             )
@@ -5214,6 +5250,37 @@ async function openMaternalChildCareCenter() {
   async function loadMaternalPatient(
     patientId
   ) {
+
+    const selectedPatient =
+  patients.find(
+    patient =>
+      String(patient.patient_id) ===
+      String(patientId)
+  )
+
+const patientGender =
+  String(
+    selectedPatient?.gender || ''
+  )
+    .trim()
+    .toLowerCase()
+
+if (
+  !['female', 'f'].includes(
+    patientGender
+  )
+) {
+  if (resultsBox) {
+    resultsBox.innerHTML = `
+      <div class="maternal-search-message error">
+        Maternal & Child Care is available only
+        for patients with recorded gender as Female.
+      </div>
+    `
+  }
+
+  return
+}
 
     const content =
       document.querySelector(
@@ -14584,6 +14651,16 @@ if (messageBox) {
       if (resultsBox) {
         resultsBox.innerHTML = ''
       }
+
+const maternalContent =
+  document.querySelector(
+    '#maternalCareContent'
+  )
+
+maternalContent?.scrollTo({
+  top: 0,
+  behavior: 'smooth'
+})
 
       window.scrollTo({
         top: 0,

@@ -8165,3 +8165,58 @@ textarea.form-control {
   overflow-x: hidden;
   padding-bottom: 40px;
 }
+
+/* =====================================================
+   MATERNAL FORM — ALWAYS ABOVE FULL-SCREEN CARE CENTER
+   ===================================================== */
+
+.maternal-form-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 1000000 !important;
+}
+
+.maternal-form-modal {
+  position: relative !important;
+  z-index: 1000001 !important;
+  max-height: calc(100vh - 32px) !important;
+  overflow-y: auto !important;
+}
+
+/* =====================================================
+   FINAL FULL-SCREEN MATERNAL CENTER
+   ===================================================== */
+
+.maternal-child-care-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  z-index: 99999 !important;
+}
+
+.maternal-child-care-modal {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  overflow: hidden !important;
+}
+
+.maternal-care-content {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+}
+
+.maternal-care-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+}
